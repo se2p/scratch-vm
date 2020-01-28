@@ -47,6 +47,8 @@ class VirtualMachine extends EventEmitter {
     constructor () {
         super();
 
+        this.oldStepTime = null;
+
         /**
          * VM runtime, to store blocks, I/O devices, sprites/targets, etc.
          * @type {!Runtime}
@@ -170,6 +172,33 @@ class VirtualMachine extends EventEmitter {
      */
     start () {
         this.runtime.start();
+    }
+
+    /**
+     * If not halted yet, sets the state of the VM so execution is paused.
+     *
+     * <p>{@link resumeExecution} has to be called after to reset the state.
+     */
+    haltExecution () {
+        if (!this.runtime.paused) {
+            this.runtime.paused = true;
+
+            this.oldStepTime = this.runtime.paused;
+            this.runtime.currentStepTime = Infinity;
+            this.emit(Runtime.PROJECT_RUN_PAUSE);
+        }
+    }
+
+    /**
+     * If paused, resets the state of the VM so execution can continue.
+     */
+    resumeExecution () {
+        if (this.runtime.paused) {
+            this.runtime.paused = false;
+
+            this.runtime.currentStepTime = this.oldStepTime;
+            this.emit(Runtime.PROJECT_RUN_RESUME);
+        }
     }
 
     /**

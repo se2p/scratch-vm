@@ -178,6 +178,8 @@ class Runtime extends EventEmitter {
     constructor () {
         super();
 
+        this.paused = false;
+
         /**
          * Target management and storage.
          * @type {Array.<!Target>}
@@ -492,6 +494,25 @@ class Runtime extends EventEmitter {
      */
     static get PROJECT_RUN_STOP () {
         return 'PROJECT_RUN_STOP';
+    }
+
+    /**
+     * Event name when runtime is paused
+     * Used by the UI to indicate paused status.
+     * @const {string}
+     */
+    static get PROJECT_RUN_PAUSE () {
+        return 'PROJECT_RUN_PAUSE';
+    }
+
+    /**
+     * Event name when threads stop running
+     * Used by the UI to indicate the paused
+     * status has been resumed.
+     * @const {string}
+     */
+    static get PROJECT_RUN_RESUME () {
+        return 'PROJECT_RUN_RESUME';
     }
 
     /**
@@ -2549,7 +2570,9 @@ class Runtime extends EventEmitter {
         }
         this.currentStepTime = interval;
         this._steppingInterval = setInterval(() => {
-            this._step();
+            if (!this.paused) {
+                this._step();
+            }
         }, interval);
         this.emit(Runtime.RUNTIME_STARTED);
     }
