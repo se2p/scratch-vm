@@ -18,6 +18,8 @@ const Variable = require('./variable');
 const xmlEscape = require('../util/xml-escape');
 const ScratchLinkWebSocket = require('../util/scratch-link-websocket');
 
+const {tracer} = require('./tracing');
+
 // Virtual I/O devices.
 const Clock = require('../io/clock');
 const Cloud = require('../io/cloud');
@@ -179,6 +181,9 @@ class Runtime extends EventEmitter {
         super();
 
         this.paused = false;
+        this.traceInfo = {
+            tracer: tracer
+        };
 
         /**
          * Target management and storage.
@@ -1980,6 +1985,9 @@ class Runtime extends EventEmitter {
     greenFlag () {
         this.stopAll();
         this.emit(Runtime.PROJECT_START);
+
+        this.traceInfo.tracer.reset();
+
         this.ioDevices.clock.resetProjectTimer();
         this.targets.forEach(target => target.clearEdgeActivatedValues());
         // Inform all targets of the green flag.
