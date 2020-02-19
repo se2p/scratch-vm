@@ -180,8 +180,6 @@ class VirtualMachine extends EventEmitter {
      * <p>{@link resumeExecution} has to be called after to reset the state.
      */
     haltExecution () {
-        // TODO Phil 12/02/2020: Remove at a later point in time.
-        this.runtime.traceInfo.tracer.debugPrintTrace(console);
         if (!this.runtime.paused) {
             this.runtime.paused = true;
 

@@ -64,61 +64,6 @@ class Tracer {
 
         this.traces.push(trace);
     }
-
-    hasMotionBlocks () {
-        return this.traces.some(value => value.opcode.startsWith('motion'));
-    }
-
-    hasLooksBlocks () {
-        return this.traces.some(value => value.opcode.startsWith('looks'));
-    }
-
-    hasSoundBlocks () {
-        return this.traces.some(value => value.opcode.startsWith('sound'));
-    }
-
-    hasEventBlocks () {
-        return this.traces.some(value => value.opcode.startsWith('event'));
-    }
-
-    hasControlBlocks () {
-        return this.traces.some(value => value.opcode.startsWith('control'));
-    }
-
-    hasSensingBlocks () {
-        return this.traces.some(value => value.opcode.startsWith('sensing'));
-    }
-
-    hasOperatorBlocks () {
-        return this.traces.some(value => value.opcode.startsWith('operator'));
-    }
-
-    hasDataBlocks () {
-        return this.traces.some(value => value.opcode.startsWith('data'));
-    }
-
-    hasBlock (opcode) {
-        return this.traces.some(value => value.opcode === opcode);
-    }
-
-    /**
-     * Debug print to a given output stream. Most likely console.
-     */
-    // TODO Phil 29/01/2020: currently, this is just debug output
-    debugPrintTrace (stream) {
-        stream.log(this.traces);
-
-        stream.log(`hasMotionBlocks(): ${this.hasMotionBlocks()}`);
-        stream.log(`hasLooksBlocks(): ${this.hasLooksBlocks()}`);
-        stream.log(`hasSoundBlocks(): ${this.hasSoundBlocks()}`);
-        stream.log(`hasEventBlocks(): ${this.hasEventBlocks()}`);
-        stream.log(`hasSensingBlocks(): ${this.hasSensingBlocks()}`);
-        stream.log(`hasControlBlocks(): ${this.hasControlBlocks()}`);
-        stream.log(`hasOperatorBlocks(): ${this.hasOperatorBlocks()}`);
-        stream.log(`hasDataBlocks(): ${this.hasDataBlocks()}`);
-        stream.log(`hasBlock('control_forever'): ${this.hasBlock('control_forever')}`);
-    }
-
     /**
      * Resets the tracer instance by clearing the traces collection.
      */
