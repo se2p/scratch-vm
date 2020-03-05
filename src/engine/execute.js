@@ -435,7 +435,7 @@ const execute = function (sequencer, thread) {
     const ops = blockCached._ops;
     const length = ops.length;
 
-    tracer.addTraceRecord(new Trace(blockCached));
+    tracer.addTraceRecord(new Trace(blockCached, runtime.targets));
     let i = 0;
 
     if (currentStackFrame.reported !== null) {

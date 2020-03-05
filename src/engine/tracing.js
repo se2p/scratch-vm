@@ -10,8 +10,9 @@ class Trace {
      * with all required information.
      *
      * @param {BlockCached} cachedBlock - a Scratch block object.
+     * @param {Array<Target>} targets - the current state of targets.
      */
-    constructor (cachedBlock) {
+    constructor (cachedBlock, targets) {
         this.blockId = cachedBlock.id;
         this.opcode = cachedBlock.opcode;
         this.ops = cachedBlock._ops;
@@ -21,6 +22,29 @@ class Trace {
         this.isShadowBlock = cachedBlock._isShadowBlock;
         this.shadowOps = cachedBlock._shadowOps;
         this.argValues = cachedBlock._argValues;
+
+        this.targetsInfo = {};
+
+        if (targets) {
+            for (const target of targets) {
+                this.targetsInfo[target.id] = {
+                    id: target.id,
+                    x: target.x,
+                    y: target.y,
+                    currentCostume: target.currentCostume,
+                    variables: {}
+                };
+                for (const id in target.variables) {
+                    const variable = target.variables[id];
+                    this.targetsInfo[target.id].variables[id] = {
+                        id: id,
+                        type: variable.type,
+                        name: variable.name,
+                        value: variable.value
+                    };
+                }
+            }
+        }
     }
 }
 
@@ -40,8 +64,13 @@ class Tracer {
      * @returns {boolean} - <code>true</code> when the trace should be stored, <code>false</code> otherwise.
      */
     filterTrace (trace) {
-        if (this.traces && trace.opcode.startsWith('motion')) {
-            return this.traces[this.traces.length - 1].blockId !== trace.blockId;
+        if (this.traces) {
+            if (trace.opcode === 'data_variable') {
+                return false;
+            }
+            if (trace.opcode.startsWith('motion') || trace.opcode === 'control_wait') {
+                return this.traces[this.traces.length - 1].blockId !== trace.blockId;
+            }
         }
         return true;
     }
