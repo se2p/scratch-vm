@@ -17,32 +17,35 @@ class Trace {
         this.opcode = cachedBlock.opcode;
         this.ops = cachedBlock._ops;
         this.inputs = cachedBlock.inputs;
-        this.fields = cachedBlock.fields;
-        this.isHat = cachedBlock._isHat;
-        this.isShadowBlock = cachedBlock._isShadowBlock;
-        this.shadowOps = cachedBlock._shadowOps;
         this.argValues = cachedBlock._argValues;
+        this.fields = cachedBlock.fields;
 
         this.targetsInfo = {};
 
         if (targets) {
             for (const target of targets) {
-                this.targetsInfo[target.id] = {
+                const info = {
                     id: target.id,
-                    x: target.x,
-                    y: target.y,
                     currentCostume: target.currentCostume,
                     variables: {}
                 };
+                if (!target.isStage) {
+                    info.x = target.x;
+                    info.y = target.y;
+                    info.direction = target.direction;
+                    info.size = target.size;
+                    info.visible = target.visible;
+                }
                 for (const id in target.variables) {
                     const variable = target.variables[id];
-                    this.targetsInfo[target.id].variables[id] = {
+                    info.variables[id] = {
                         id: id,
                         type: variable.type,
                         name: variable.name,
                         value: variable.value
                     };
                 }
+                this.targetsInfo[target.id] = info;
             }
         }
     }
