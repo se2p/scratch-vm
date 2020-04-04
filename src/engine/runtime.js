@@ -18,7 +18,7 @@ const Variable = require('./variable');
 const xmlEscape = require('../util/xml-escape');
 const ScratchLinkWebSocket = require('../util/scratch-link-websocket');
 
-const {tracer} = require('./tracing');
+const {Tracer} = require('./tracing');
 
 // Virtual I/O devices.
 const Clock = require('../io/clock');
@@ -182,7 +182,7 @@ class Runtime extends EventEmitter {
 
         this.paused = false;
         this.traceInfo = {
-            tracer: tracer
+            tracer: new Tracer()
         };
 
         /**
@@ -1988,7 +1988,7 @@ class Runtime extends EventEmitter {
         this.stopAll();
         this.emit(Runtime.PROJECT_START);
 
-        this.traceInfo.tracer.reset();
+        this.traceInfo.tracer.reset(this.targets);
 
         this.ioDevices.clock.resetProjectTimer();
         this.targets.forEach(target => target.clearEdgeActivatedValues());
@@ -2430,6 +2430,7 @@ class Runtime extends EventEmitter {
      * Report that the project has loaded in the Virtual Machine.
      */
     emitProjectLoaded () {
+        this.traceInfo.tracer.reset(this.targets);
         this.emit(Runtime.PROJECT_LOADED);
     }
 
