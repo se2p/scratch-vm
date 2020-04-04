@@ -9,16 +9,17 @@ class Trace {
      * Given a block from the Scratch VM, constructs a trace record
      * with all required information.
      *
-     * @param {BlockCached} cachedBlock - a Scratch block object.
+     * @param {BlockCached} block - a Scratch block object.
      * @param {Array<Target>} targets - the current state of targets.
      */
-    constructor (cachedBlock, targets) {
-        this.blockId = cachedBlock.id;
-        this.opcode = cachedBlock.opcode;
-        this.ops = cachedBlock._ops;
-        this.inputs = cachedBlock.inputs;
-        this.argValues = cachedBlock._argValues;
-        this.fields = cachedBlock.fields;
+    constructor (block, targets) {
+        this.blockId = block.id;
+        this.opcode = block.opcode;
+        this.ops = block._ops.filter(op => op.id !== block.id).map(op => new Trace(op, targets));
+        this.inputs = block.inputs;
+        this.argValues = Object.assign({}, block._argValues);
+        delete this.argValues.mutation;
+        this.fields = block.fields;
 
         this.targetsInfo = {};
 
@@ -48,61 +49,65 @@ class Trace {
                 this.targetsInfo[target.id] = info;
             }
         }
+
+        this.ti = targetId => this.targetsInfo[targetId];
     }
 }
 
 /**
- * This class allows to trace a Scratch program by recording trace records during execution.
+ * This class allows to trace a Scratch program by recording blocks during execution.
  */
 class Tracer {
     constructor () {
         this.traces = [];
+        this.targets = [];
     }
 
     /**
-     * Configure the rules which decide whether a given trace should be stored or not.
-     * These rules can be built on all recorded trace records.
+     * Configure the rules which decide whether a given block should be stored or not.
+     * These rules can be built on all recorded block records.
      *
-     * @param {Trace} trace - The trace record which this function decides on.
-     * @returns {boolean} - <code>true</code> when the trace should be stored, <code>false</code> otherwise.
+     * @param {BlockCached} block - The block record which this function decides on.
+     * @returns {boolean} - <code>true</code> when the block should be stored, <code>false</code> otherwise.
      */
-    filterTrace (trace) {
+    _filterBlock (block) {
         if (this.traces) {
-            if (trace.opcode === 'data_variable') {
+            if (block.opcode === 'data_variable') {
                 return false;
             }
-            if (trace.opcode.startsWith('motion') || trace.opcode === 'control_wait') {
-                return this.traces[this.traces.length - 1].blockId !== trace.blockId;
+            if (block.opcode.startsWith('motion') || block.opcode === 'control_wait') {
+                return this.traces[this.traces.length - 1].blockId !== block.blockId;
             }
         }
         return true;
     }
 
     /**
-     * Adds a given trace record to the complete trace iff it is not filtered out by
-     * Tracer#filterTrace
+     * Adds a given block to the trace record iff it is not filtered
+     * out by Tracer#_filterBlock.
      *
-     * @param {Trace} trace - the trace that should be added.
+     * @param {BlockCached} block  - the block that is added as a trace.
      */
-    addTraceRecord (trace) {
-        if (!this.filterTrace(trace)) {
+    traceExecutedBlock (block) {
+        if (!this._filterBlock(block)) {
             return;
         }
-        for (const op of trace.ops) {
-            if (op.id && op.id !== trace.blockId) {
-                this.traces.push(new Trace(op));
-            }
-        }
-
-        this.traces.push(trace);
+        this.traces.push(new Trace(block, this.targets));
     }
+
     /**
-     * Resets the tracer instance by clearing the traces collection.
+     * Resets the tracer instance by clearing the list of traces and
+     * overwriting the targets.
+     *
+     * @param {Array<Target>} targets - the current targets of the runtime.
      */
-    reset () {
+    reset (targets) {
+        this.targets = targets;
         this.traces = [];
     }
 }
 
-module.exports.tracer = new Tracer();
-module.exports.Trace = Trace;
+module.exports = {
+    Tracer,
+    Trace
+};

@@ -4,7 +4,6 @@ const log = require('../util/log');
 const Thread = require('./thread');
 const {Map} = require('immutable');
 const cast = require('../util/cast');
-const {tracer, Trace} = require('./tracing');
 
 /**
  * Single BlockUtility instance reused by execute for every pritimive ran.
@@ -435,7 +434,6 @@ const execute = function (sequencer, thread) {
     const ops = blockCached._ops;
     const length = ops.length;
 
-    tracer.addTraceRecord(new Trace(blockCached, runtime.targets));
     let i = 0;
 
     if (currentStackFrame.reported !== null) {
@@ -574,6 +572,8 @@ const execute = function (sequencer, thread) {
             }
         }
     }
+
+    runtime.traceInfo.tracer.traceExecutedBlock(blockCached);
 
     if (runtime.profiler !== null) {
         if (blockCached._profiler !== runtime.profiler) {
