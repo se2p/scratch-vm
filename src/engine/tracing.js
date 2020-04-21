@@ -13,7 +13,7 @@ class Trace {
      * @param {Array<Target>} targets - the current state of targets.
      */
     constructor (block, targets) {
-        this.blockId = block.id;
+        this.id = block.id;
         this.opcode = block.opcode;
         this.ops = block._ops.filter(op => op.id !== block.id).map(op => new Trace(op, targets));
         this.inputs = block.inputs;
@@ -85,13 +85,13 @@ class Tracer {
                 return false;
             case 'motion_glideto':
             case 'motion_glidesecstoxy':
-                if (this.lastTraced.blockId === block.id) {
+                if (this.lastTraced.id === block.id) {
                     this.lastTraced.updateTargets(this.targets);
                     return false;
                 }
                 break;
             case 'control_wait':
-                if (this.lastTraced.blockId === block.id) {
+                if (this.lastTraced.id === block.id) {
                     return false;
                 }
                 break;
