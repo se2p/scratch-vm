@@ -182,7 +182,9 @@ class Runtime extends EventEmitter {
 
         this.paused = false;
         this.traceInfo = {
-            tracer: new Tracer()
+            tracer: new Tracer(),
+            reset: () => this.traceInfo.tracer.reset(this.targets),
+            isEmpty: () => this.traceInfo.tracer.isEmpty()
         };
 
         /**
@@ -1988,7 +1990,7 @@ class Runtime extends EventEmitter {
         this.stopAll();
         this.emit(Runtime.PROJECT_START);
 
-        this.traceInfo.tracer.reset(this.targets);
+        this.traceInfo.reset();
 
         this.ioDevices.clock.resetProjectTimer();
         this.targets.forEach(target => target.clearEdgeActivatedValues());
@@ -2430,7 +2432,7 @@ class Runtime extends EventEmitter {
      * Report that the project has loaded in the Virtual Machine.
      */
     emitProjectLoaded () {
-        this.traceInfo.tracer.reset(this.targets);
+        this.traceInfo.reset();
         this.emit(Runtime.PROJECT_LOADED);
     }
 

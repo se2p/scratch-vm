@@ -125,6 +125,15 @@ class Tracer {
         this.targets = targets;
         this.traces = [];
     }
+
+    /**
+     * Returns whether the recorded trace is empty.
+     *
+     * @return {boolean} - true when the recorded trace is empty, false otherwise.
+     */
+    isEmpty () {
+        return this.traces.length === 0;
+    }
 }
 
 module.exports = {
