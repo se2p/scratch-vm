@@ -13,7 +13,7 @@ class Trace {
      * @param {Array<Target>} targets - the current state of targets.
      */
     constructor (block, targets) {
-        this.blockId = block.id;
+        this.id = block.id;
         this.opcode = block.opcode;
         this.ops = block._ops.filter(op => op.id !== block.id).map(op => new Trace(op, targets));
         this.inputs = block.inputs;
@@ -21,6 +21,14 @@ class Trace {
         delete this.argValues.mutation;
         this.fields = block.fields;
 
+        this.updateTargets(targets);
+    }
+
+    ti (targetId) {
+        return this.targetsInfo[targetId];
+    }
+
+    updateTargets (targets) {
         this.targetsInfo = {};
 
         if (targets) {
@@ -49,8 +57,6 @@ class Trace {
                 this.targetsInfo[target.id] = info;
             }
         }
-
-        this.ti = targetId => this.targetsInfo[targetId];
     }
 }
 
@@ -61,6 +67,7 @@ class Tracer {
     constructor () {
         this.traces = [];
         this.targets = [];
+        this.lastTraced = null;
     }
 
     /**
@@ -71,12 +78,23 @@ class Tracer {
      * @returns {boolean} - <code>true</code> when the block should be stored, <code>false</code> otherwise.
      */
     _filterBlock (block) {
-        if (this.traces) {
-            if (block.opcode === 'data_variable') {
+        if (this.lastTraced) {
+            switch (block.opcode) {
+            case 'data_variable':
+                // These occur when a variable's value is shown on the playground
                 return false;
-            }
-            if (block.opcode.startsWith('motion') || block.opcode === 'control_wait') {
-                return this.traces[this.traces.length - 1].blockId !== block.blockId;
+            case 'motion_glideto':
+            case 'motion_glidesecstoxy':
+                if (this.lastTraced.id === block.id) {
+                    this.lastTraced.updateTargets(this.targets);
+                    return false;
+                }
+                break;
+            case 'control_wait':
+                if (this.lastTraced.id === block.id) {
+                    return false;
+                }
+                break;
             }
         }
         return true;
@@ -92,7 +110,9 @@ class Tracer {
         if (!this._filterBlock(block)) {
             return;
         }
-        this.traces.push(new Trace(block, this.targets));
+        const newTrace = new Trace(block, this.targets);
+        this.traces.push(newTrace);
+        this.lastTraced = newTrace;
     }
 
     /**
@@ -104,6 +124,15 @@ class Tracer {
     reset (targets) {
         this.targets = targets;
         this.traces = [];
+    }
+
+    /**
+     * Returns whether the recorded trace is empty.
+     *
+     * @return {boolean} - true when the recorded trace is empty, false otherwise.
+     */
+    isEmpty () {
+        return this.traces.length === 0;
     }
 }
 
