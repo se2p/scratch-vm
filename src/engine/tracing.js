@@ -20,6 +20,7 @@ class Trace {
         this.argValues = Object.assign({}, block._argValues);
         delete this.argValues.mutation;
         this.fields = block.fields;
+        this.distances = [...block._distances];
 
         this.updateTargets(targets);
     }
@@ -47,11 +48,17 @@ class Trace {
                 }
                 for (const id in target.variables) {
                     const variable = target.variables[id];
+                    let value;
+                    if (variable.type === 'list') {
+                        value = Array.from(variable.value);
+                    } else {
+                        value = variable.value;
+                    }
                     info.variables[id] = {
                         id: id,
                         type: variable.type,
                         name: variable.name,
-                        value: variable.value
+                        value: value
                     };
                 }
                 this.targetsInfo[target.id] = info;
@@ -80,8 +87,8 @@ class Tracer {
     _filterBlock (block) {
         if (this.lastTraced) {
             switch (block.opcode) {
-            case 'data_variable':
-                // These occur when a variable's value is shown on the playground
+            case 'data_variable': // These occur due to displaying a variable's value
+            case 'data_listcontents': // These occur due to displaying list monitor
                 return false;
             case 'motion_glideto':
             case 'motion_glidesecstoxy':

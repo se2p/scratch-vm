@@ -160,7 +160,7 @@ const handlePromise = (primitiveReportedValue, sequencer, thread, blockCached, l
  * @param {object} cached default set of cached values
  */
 class BlockCached {
-    constructor (blockContainer, cached) {
+    constructor(blockContainer, cached) {
         /**
          * Block id in its parent set of blocks.
          * @type {string}
@@ -255,6 +255,12 @@ class BlockCached {
         };
 
         /**
+         * An arguments object for raw inputs. Used for tracing
+         * @type {object}
+         */
+        this._distances = null;
+
+        /**
          * The inputs key the parent refers to this BlockCached by.
          * @type {string}
          */
@@ -266,6 +272,15 @@ class BlockCached {
          * @type {object}
          */
         this._parentValues = null;
+
+        /**
+         * The target object where the parent wants branch distances of its ops stored (used for tracing)
+         * with _parentKey as the key.
+         * @type {object}
+         */
+        this._parentDistances = null;
+
+        this._parentNegated = false;
 
         /**
          * A sequence of shadow value operations that can be performed in any
@@ -292,6 +307,7 @@ class BlockCached {
         this._isHat = runtime.getIsHat(opcode);
         this._blockFunction = runtime.getOpcodeFunction(opcode);
         this._definedBlockFunction = typeof this._blockFunction !== 'undefined';
+        this._distances = [];
 
         // Store the current shadow value if there is a shadow value.
         const fieldKeys = Object.keys(fields);
@@ -363,6 +379,13 @@ class BlockCached {
                 this._ops.push(...inputCached._ops);
                 inputCached._parentKey = inputName;
                 inputCached._parentValues = this._argValues;
+                inputCached._parentDistances = this._distances;
+
+                if (this._parentNegated || this.opcode === "operator_not") {
+                    inputCached._parentNegated = !this._parentNegated;
+                } else {
+                    inputCached._parentNegated = this._parentNegated;
+                }
 
                 // Shadow values are static and do not change, go ahead and
                 // store their value on args.
@@ -523,6 +546,9 @@ const execute = function (sequencer, thread) {
 
         const primitiveReportedValue = blockFunction(argValues, blockUtility);
 
+        let negated = getNegationStatus(opCached.id, blockContainer._blocks);
+        const primitiveBranchDistanceValue = branchDistanceValue(blockFunction, argValues, opCached._distances, negated);
+
         // If it's a promise, wait until promise resolves.
         if (isPromise(primitiveReportedValue)) {
             handlePromise(primitiveReportedValue, sequencer, thread, opCached, lastOperation);
@@ -560,6 +586,7 @@ const execute = function (sequencer, thread) {
                 // parent.
                 const inputName = opCached._parentKey;
                 const parentValues = opCached._parentValues;
+                opCached._parentDistances.push(primitiveBranchDistanceValue)
 
                 if (inputName === 'BROADCAST_INPUT') {
                     // Something is plugged into the broadcast input.
@@ -575,6 +602,14 @@ const execute = function (sequencer, thread) {
 
     runtime.traceInfo.tracer.traceExecutedBlock(blockCached);
 
+    for (let j = 0; j < length; j++) {
+        const opCached = ops[j];
+        // sadly we need to do this with a loop because we still have references to this array
+        while(opCached._distances.length) {
+            opCached._distances.pop();
+        }
+    }
+
     if (runtime.profiler !== null) {
         if (blockCached._profiler !== runtime.profiler) {
             _prepareBlockProfiling(runtime.profiler, blockCached);
@@ -589,5 +624,97 @@ const execute = function (sequencer, thread) {
         }
     }
 };
+
+branchDistanceValue = function (blockFunction, argValues, distanceValues, negated) {
+    const name = blockFunction.name;
+    const shortname = name.replace("bound ", "");
+
+    if (["lt", "gt", "equals", "and", "or"].indexOf(shortname) < 0 && distanceValues) {
+        // by default just reuse the previous value
+        return distanceValues[0];
+    }
+
+    if (!argValues && ["and", "or"].indexOf(shortname) >= 0) {
+        // Something has gone wrong, cannot calculate distance
+        return null;
+    }
+
+    const first = cast.toNumber(argValues["OPERAND1"]);
+    const second = cast.toNumber(argValues["OPERAND2"]);
+
+    if (negated) {
+        if (name.includes("gt")) {
+            const result = second - first
+            if (result >= 0) {
+                return 0
+            } else {
+                return result + 1;
+            }
+        } else if (name.includes("lt")) {
+            const result = first - second
+            if (result >= 0) {
+                return 0
+            } else {
+                return result + 1;
+            }
+        } else if (name.includes("equals")) {
+            const result = Math.abs(first - second)
+            if (result === 0) {
+                return 1;
+            } else {
+                return 0;
+            }
+        } else if (name.includes("and")) {
+            return distanceValues[0] + distanceValues[1]
+        } else if (name.includes("or")) {
+            return Math.min(distanceValues[0], distanceValues[0])
+        } else {
+            // by default just reuse the previous value
+            return distanceValues[0];
+        }
+
+    } else {
+        if (name.includes("gt")) {
+            const result = second - first
+            if (result < 0) {
+                return 0
+            } else {
+                return result + 1;
+            }
+        } else if (name.includes("lt")) {
+            const result = first - second
+            if (result < 0) {
+                return 0
+            } else {
+                return result + 1;
+            }
+        } else if (name.includes("equals")) {
+            return Math.abs(first - second);
+        } else if (name.includes("and")) {
+            return distanceValues[0] + distanceValues[1]
+        } else if (name.includes("or")) {
+            return Math.min(distanceValues[0], distanceValues[1])
+        } else {
+            // by default just reuse the previous value
+            return distanceValues[0];
+        }
+    }
+};
+
+getNegationStatus = function (startId, blocks) {
+    current = blocks[startId]
+    negCount = 0;
+
+    while (current.opcode.includes("operator")) {
+        if (current.opcode === "operator_not") {
+            negCount++;
+        }
+
+        current = blocks[current.parent]
+    }
+
+    // if operator_not appears a (multiple of 2 times), we do not need to negate
+    return (negCount % 2 === 1)
+}
 
 module.exports = execute;
