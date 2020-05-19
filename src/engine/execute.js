@@ -94,7 +94,8 @@ const handleReport = function (resolvedValue, sequencer, thread, blockCached, la
                 }
                 sequencer.runtime.requestUpdateMonitor(Map({
                     id: currentBlockId,
-                    spriteName: targetId ? sequencer.runtime.getTargetById(targetId).getName() : null,
+                    spriteName: targetId ? sequencer.runtime.getTargetById(targetId)
+                        .getName() : null,
                     value: resolvedValue
                 }));
             }
@@ -160,7 +161,7 @@ const handlePromise = (primitiveReportedValue, sequencer, thread, blockCached, l
  * @param {object} cached default set of cached values
  */
 class BlockCached {
-    constructor(blockContainer, cached) {
+    constructor (blockContainer, cached) {
         /**
          * Block id in its parent set of blocks.
          * @type {string}
@@ -381,7 +382,7 @@ class BlockCached {
                 inputCached._parentValues = this._argValues;
                 inputCached._parentDistances = this._distances;
 
-                if (this._parentNegated || this.opcode === "operator_not") {
+                if (this._parentNegated || this.opcode === 'operator_not') {
                     inputCached._parentNegated = !this._parentNegated;
                 } else {
                     inputCached._parentNegated = this._parentNegated;
@@ -487,7 +488,8 @@ const execute = function (sequencer, thread) {
         // candidate. If an earlier block that was performed was removed then
         // we'll find the index where the last operation is now.
         if (reported.length > 0) {
-            const lastExisting = reported.reverse().find(report => ops.find(op => op.id === report.opCached));
+            const lastExisting = reported.reverse()
+                .find(report => ops.find(op => op.id === report.opCached));
             if (lastExisting) {
                 i = ops.findIndex(opCached => opCached.id === lastExisting.opCached) + 1;
             } else {
@@ -559,21 +561,22 @@ const execute = function (sequencer, thread) {
             // that time.
             thread.justReported = null;
             currentStackFrame.reporting = ops[i].id;
-            currentStackFrame.reported = ops.slice(0, i).map(reportedCached => {
-                const inputName = reportedCached._parentKey;
-                const reportedValues = reportedCached._parentValues;
+            currentStackFrame.reported = ops.slice(0, i)
+                .map(reportedCached => {
+                    const inputName = reportedCached._parentKey;
+                    const reportedValues = reportedCached._parentValues;
 
-                if (inputName === 'BROADCAST_INPUT') {
+                    if (inputName === 'BROADCAST_INPUT') {
+                        return {
+                            opCached: reportedCached.id,
+                            inputValue: reportedValues[inputName].BROADCAST_OPTION.name
+                        };
+                    }
                     return {
                         opCached: reportedCached.id,
-                        inputValue: reportedValues[inputName].BROADCAST_OPTION.name
+                        inputValue: reportedValues[inputName]
                     };
-                }
-                return {
-                    opCached: reportedCached.id,
-                    inputValue: reportedValues[inputName]
-                };
-            });
+                });
 
             // We are waiting for a promise. Stop running this set of operations
             // and continue them later after thawing the reported values.
@@ -586,7 +589,7 @@ const execute = function (sequencer, thread) {
                 // parent.
                 const inputName = opCached._parentKey;
                 const parentValues = opCached._parentValues;
-                opCached._parentDistances.push(primitiveBranchDistanceValue)
+                opCached._parentDistances.push(primitiveBranchDistanceValue);
 
                 if (inputName === 'BROADCAST_INPUT') {
                     // Something is plugged into the broadcast input.
@@ -605,7 +608,7 @@ const execute = function (sequencer, thread) {
     for (let j = 0; j < length; j++) {
         const opCached = ops[j];
         // sadly we need to do this with a loop because we still have references to this array
-        while(opCached._distances.length) {
+        while (opCached._distances.length) {
             opCached._distances.pop();
         }
     }
@@ -627,94 +630,105 @@ const execute = function (sequencer, thread) {
 
 branchDistanceValue = function (blockFunction, argValues, distanceValues, negated) {
     const name = blockFunction.name;
-    const shortname = name.replace("bound ", "");
+    const shortname = name.replace('bound ', '');
 
-    if (["lt", "gt", "equals", "and", "or"].indexOf(shortname) < 0 && distanceValues) {
+    if (['lt', 'gt', 'equals', 'and', 'or', 'not'].indexOf(shortname) < 0 && distanceValues) {
+        // unsupported operation
         // by default just reuse the previous value
         return distanceValues[0];
     }
 
-    if (!argValues && ["and", "or"].indexOf(shortname) >= 0) {
+    if (!argValues && ['and', 'or'].indexOf(shortname) >= 0) {
         // Something has gone wrong, cannot calculate distance
         return null;
     }
 
-    const first = cast.toNumber(argValues["OPERAND1"]);
-    const second = cast.toNumber(argValues["OPERAND2"]);
+    const first = cast.toNumber(argValues['OPERAND1']);
+    const second = cast.toNumber(argValues['OPERAND2']);
 
-    if (negated) {
-        if (name.includes("gt")) {
-            const result = second - first
-            if (result >= 0) {
-                return 0
-            } else {
-                return result + 1;
-            }
-        } else if (name.includes("lt")) {
-            const result = first - second
-            if (result >= 0) {
-                return 0
-            } else {
-                return result + 1;
-            }
-        } else if (name.includes("equals")) {
-            const result = Math.abs(first - second)
-            if (result === 0) {
-                return 1;
-            } else {
-                return 0;
-            }
-        } else if (name.includes("and")) {
-            return distanceValues[0] + distanceValues[1]
-        } else if (name.includes("or")) {
-            return Math.min(distanceValues[0], distanceValues[0])
+    const td = getTrueDistance(name, first, second, distanceValues);
+    const fd = getFalseDistance(name, first, second, distanceValues);
+
+    return [td, fd];
+};
+
+const getFalseDistance = function (operationName, first, second, distanceValues) {
+    if (operationName.includes('gt')) {
+        const result = second - first;
+        if (result >= 0) {
+            return 0;
         } else {
-            // by default just reuse the previous value
-            return distanceValues[0];
+            return result + 1;
         }
-
+    } else if (operationName.includes('lt')) {
+        const result = first - second;
+        if (result >= 0) {
+            return 0;
+        } else {
+            return result + 1;
+        }
+    } else if (operationName.includes('equals')) {
+        const result = Math.abs(first - second);
+        if (result === 0) {
+            return 1;
+        } else {
+            return 0;
+        }
+    } else if (operationName.includes('and')) {
+        return distanceValues[0][1] + distanceValues[1][1];
+    } else if (operationName.includes('or')) {
+        return Math.min(distanceValues[0][1], distanceValues[0][1]);
+    } else if (operationName.includes('not')) {
+        return distanceValues[0][0];
     } else {
-        if (name.includes("gt")) {
-            const result = second - first
-            if (result < 0) {
-                return 0
-            } else {
-                return result + 1;
-            }
-        } else if (name.includes("lt")) {
-            const result = first - second
-            if (result < 0) {
-                return 0
-            } else {
-                return result + 1;
-            }
-        } else if (name.includes("equals")) {
-            return Math.abs(first - second);
-        } else if (name.includes("and")) {
-            return distanceValues[0] + distanceValues[1]
-        } else if (name.includes("or")) {
-            return Math.min(distanceValues[0], distanceValues[1])
+        // by default just reuse the previous value
+        return distanceValues[0];
+    }
+};
+
+const getTrueDistance = function (operationName, first, second, distanceValues) {
+    if (operationName.includes('gt')) {
+        const result = second - first;
+        if (result < 0) {
+            return 0;
         } else {
-            // by default just reuse the previous value
-            return distanceValues[0];
+            return result + 1;
         }
+    } else if (operationName.includes('lt')) {
+        const result = first - second;
+        if (result < 0) {
+            return 0;
+        } else {
+            return result + 1;
+        }
+    } else if (operationName.includes('equals')) {
+        return Math.abs(first - second);
+    } else if (operationName.includes('and')) {
+        return distanceValues[0][0] + distanceValues[1][0];
+    } else if (operationName.includes('or')) {
+        return Math.min(distanceValues[0][0], distanceValues[1][0]);
+    } else if (operationName.includes('not')) {
+        return distanceValues[0][1];
+    } else {
+        // by default just reuse the previous value
+        return distanceValues[0];
     }
 };
 
 getNegationStatus = function (startId, blocks) {
-    current = blocks[startId]
+    current = blocks[startId];
     negCount = 0;
 
-    while (current.opcode.includes("operator")) {
-        if (current.opcode === "operator_not") {
+    while (current.opcode.includes('operator')) {
+        if (current.opcode === 'operator_not') {
             negCount++;
         }
 
-        current = blocks[current.parent]
+        current = blocks[current.parent];
     }
 
     // if operator_not appears a (multiple of 2 times), we do not need to negate
-    return (negCount % 2 === 1)
-}
+    return (negCount % 2 === 1);
+};
 
 module.exports = execute;
