@@ -654,18 +654,18 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, negate
 
 const getFalseDistance = function (operationName, first, second, distanceValues) {
     if (operationName.includes('gt')) {
-        const result = second - first;
-        if (result >= 0) {
+        const result = first - second;
+        if (result < 0) {
             return 0;
         } else {
-            return result + 1;
+            return result;
         }
     } else if (operationName.includes('lt')) {
-        const result = first - second;
-        if (result >= 0) {
+        const result = second - first;
+        if (result < 0) {
             return 0;
         } else {
-            return result + 1;
+            return result;
         }
     } else if (operationName.includes('equals')) {
         const result = Math.abs(first - second);
@@ -675,9 +675,16 @@ const getFalseDistance = function (operationName, first, second, distanceValues)
             return 0;
         }
     } else if (operationName.includes('and')) {
-        return distanceValues[0][1] + distanceValues[1][1];
+        // Not and a b == not a or not b
+        // So we flip each and apply or
+        return Math.min(distanceValues[0][0], distanceValues[1][0]);
+
+        // return distanceValues[0][1] + distanceValues[1][1];
     } else if (operationName.includes('or')) {
-        return Math.min(distanceValues[0][1], distanceValues[0][1]);
+        // Not or a b == not a and not b
+        // return Math.min(distanceValues[0][1], distanceValues[0][1]);
+
+        return distanceValues[0][0] + distanceValues[1][0];
     } else if (operationName.includes('not')) {
         return distanceValues[0][0];
     } else {
