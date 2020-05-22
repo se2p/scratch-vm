@@ -584,6 +584,9 @@ const execute = function (sequencer, thread) {
         } else if (thread.status === Thread.STATUS_RUNNING) {
             if (lastOperation) {
                 handleReport(primitiveReportedValue, sequencer, thread, opCached, lastOperation);
+                if (opCached._distances) {
+                    opCached._distances.push(primitiveBranchDistanceValue);
+                }
             } else {
                 // By definition a block that is not last in the list has a
                 // parent.
@@ -632,6 +635,10 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, negate
     const name = blockFunction.name;
     const shortname = name.replace('bound ', '');
 
+    if (shortname === 'forever') {
+        return [0, 1];
+    }
+
     if (['lt', 'gt', 'equals', 'and', 'or', 'not'].indexOf(shortname) < 0 && distanceValues) {
         // unsupported operation
         // by default just reuse the previous value
@@ -643,16 +650,26 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, negate
         return null;
     }
 
-    const first = cast.toNumber(argValues['OPERAND1']);
-    const second = cast.toNumber(argValues['OPERAND2']);
+    let first;
+    let second;
+    let td, fd;
+    if ((typeof argValues['OPERAND1'] == 'string') || (typeof argValues['OPERAND2']) == 'string') {
+        first = cast.toString(argValues['OPERAND1']);
+        second = cast.toString(argValues['OPERAND2']);
+        td = getTrueDistanceString(name, first, second, distanceValues);
+        fd = getFalseDistanceString(name, first, second, distanceValues);
+    } else {
+        first = cast.toNumber(argValues['OPERAND1']);
+        second = cast.toNumber(argValues['OPERAND2']);
+        td = getTrueDistanceNum(name, first, second, distanceValues);
+        fd = getFalseDistanceNum(name, first, second, distanceValues);
+    }
 
-    const td = getTrueDistance(name, first, second, distanceValues);
-    const fd = getFalseDistance(name, first, second, distanceValues);
 
     return [td, fd];
 };
 
-const getFalseDistance = function (operationName, first, second, distanceValues) {
+const getFalseDistanceNum = function (operationName, first, second, distanceValues) {
     if (operationName.includes('gt')) {
         const result = first - second;
         if (result < 0) {
@@ -693,7 +710,7 @@ const getFalseDistance = function (operationName, first, second, distanceValues)
     }
 };
 
-const getTrueDistance = function (operationName, first, second, distanceValues) {
+const getTrueDistanceNum = function (operationName, first, second, distanceValues) {
     if (operationName.includes('gt')) {
         const result = second - first;
         if (result < 0) {
@@ -710,6 +727,74 @@ const getTrueDistance = function (operationName, first, second, distanceValues) 
         }
     } else if (operationName.includes('equals')) {
         return Math.abs(first - second);
+    } else if (operationName.includes('and')) {
+        return distanceValues[0][0] + distanceValues[1][0];
+    } else if (operationName.includes('or')) {
+        return Math.min(distanceValues[0][0], distanceValues[1][0]);
+    } else if (operationName.includes('not')) {
+        return distanceValues[0][1];
+    } else {
+        // by default just reuse the previous value
+        return distanceValues[0];
+    }
+};
+
+const getFalseDistanceString = function (operationName, first, second, distanceValues) {
+    if (operationName.includes('gt')) {
+        if (first < second) {
+            return 0;
+        } else {
+            return 1;
+        }
+    } else if (operationName.includes('lt')) {
+        if (first < second) {
+            return 1;
+        } else {
+            return 0;
+        }
+    } else if (operationName.includes('equals')) {
+        if (first === second) {
+            return 1;
+        } else {
+            return 0;
+        }
+    } else if (operationName.includes('and')) {
+        // Not and a b == not a or not b
+        // So we flip each and apply or
+        return Math.min(distanceValues[0][0], distanceValues[1][0]);
+
+        // return distanceValues[0][1] + distanceValues[1][1];
+    } else if (operationName.includes('or')) {
+        // Not or a b == not a and not b
+        // return Math.min(distanceValues[0][1], distanceValues[0][1]);
+
+        return distanceValues[0][0] + distanceValues[1][0];
+    } else if (operationName.includes('not')) {
+        return distanceValues[0][0];
+    } else {
+        // by default just reuse the previous value
+        return distanceValues[0];
+    }
+};
+
+const getTrueDistanceString = function (operationName, first, second, distanceValues) {
+    if (operationName.includes('gt')) {
+        if (second < first) {
+            return 0;
+        } else {
+            return 1;
+        }
+    } else if (operationName.includes('lt')) {
+        if (first < second) {
+            return 0;
+        }
+        return 1;
+
+    } else if (operationName.includes('equals')) {
+        if (first === second) {
+            return 0;
+        }
+        return 1;
     } else if (operationName.includes('and')) {
         return distanceValues[0][0] + distanceValues[1][0];
     } else if (operationName.includes('or')) {
