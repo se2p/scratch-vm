@@ -15,7 +15,8 @@ class Trace {
     constructor (block, targets) {
         this.id = block.id;
         this.opcode = block.opcode;
-        this.ops = block._ops.filter(op => op.id !== block.id).map(op => new Trace(op, targets));
+        this.ops = block._ops.filter(op => op.id !== block.id)
+            .map(op => new Trace(op, targets));
         this.inputs = block.inputs;
         this.argValues = Object.assign({}, block._argValues);
         delete this.argValues.mutation;
@@ -72,7 +73,8 @@ class Trace {
  */
 class Tracer {
     constructor () {
-        this.traces = [];
+        // this.traces = [];
+        this.traces = {};
         this.targets = [];
         this.lastTraced = null;
     }
@@ -85,6 +87,11 @@ class Tracer {
      * @returns {boolean} - <code>true</code> when the block should be stored, <code>false</code> otherwise.
      */
     _filterBlock (block) {
+
+        if (!block._distances || block._distances.length === 0 || !block._distances[0]) {
+            return false;
+        }
+
         if (this.lastTraced) {
             switch (block.opcode) {
             case 'data_variable': // These occur due to displaying a variable's value
@@ -117,8 +124,25 @@ class Tracer {
         if (!this._filterBlock(block)) {
             return;
         }
-        const newTrace = new Trace(block, this.targets);
-        this.traces.push(newTrace);
+        let newTrace = new Trace(block, this.targets);
+
+        if (block.id in this.traces) {
+            const oldTrace = this.traces[block.id];
+            const oldTrue = oldTrace.distances[0][0];
+            const oldFalse = oldTrace.distances[0][1];
+
+            if (newTrace.distances[0][0] < oldTrue) {
+                oldTrace.distances[0][0] = newTrace.distances[0][0];
+            }
+
+            if (newTrace.distances[0][1] < oldFalse) {
+                oldTrace.distances[0][1] = newTrace.distances[0][1];
+            }
+        } else {
+            this.traces[block.id] = newTrace;
+        }
+
+        // this.traces.push(newTrace);
         this.lastTraced = newTrace;
     }
 
@@ -130,7 +154,10 @@ class Tracer {
      */
     reset (targets) {
         this.targets = targets;
-        this.traces = [];
+        // this.traces = [];
+        for (const prop of Object.getOwnPropertyNames(this.traces)) {
+            delete this.traces[prop];
+        }
     }
 
     /**

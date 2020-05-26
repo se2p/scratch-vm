@@ -552,9 +552,7 @@ const execute = function (sequencer, thread) {
         // Inputs are set during previous steps in the loop.
 
         const primitiveReportedValue = blockFunction(argValues, blockUtility);
-
-        const negated = getNegationStatus(opCached.id, blockContainer._blocks);
-        const primitiveBranchDistanceValue = branchDistanceValue(blockFunction, argValues, opCached._distances, negated);
+        const primitiveBranchDistanceValue = branchDistanceValue(blockFunction, argValues, opCached._distances);
 
         // If it's a promise, wait until promise resolves.
         if (isPromise(primitiveReportedValue)) {
@@ -637,7 +635,7 @@ const execute = function (sequencer, thread) {
     }
 };
 
-branchDistanceValue = function (blockFunction, argValues, distanceValues, negated) {
+branchDistanceValue = function (blockFunction, argValues, distanceValues) {
     const name = blockFunction.name;
     const shortname = name.replace('bound ', '');
 
@@ -812,22 +810,6 @@ const getTrueDistanceString = function (operationName, first, second, distanceVa
     // by default just reuse the previous value
     return distanceValues[0];
 
-};
-
-getNegationStatus = function (startId, blocks) {
-    current = blocks[startId];
-    negCount = 0;
-
-    while (current.opcode.includes('operator')) {
-        if (current.opcode === 'operator_not') {
-            negCount++;
-        }
-
-        current = blocks[current.parent];
-    }
-
-    // if operator_not appears a (multiple of 2 times), we do not need to negate
-    return (negCount % 2 === 1);
 };
 
 module.exports = execute;
