@@ -4,6 +4,7 @@ const log = require('../util/log');
 const Thread = require('./thread');
 const {Map} = require('immutable');
 const cast = require('../util/cast');
+const Sensing = require('../blocks/scratch3_sensing');
 
 /**
  * Single BlockUtility instance reused by execute for every pritimive ran.
@@ -552,7 +553,7 @@ const execute = function (sequencer, thread) {
         // Inputs are set during previous steps in the loop.
 
         const primitiveReportedValue = blockFunction(argValues, blockUtility);
-        const primitiveBranchDistanceValue = branchDistanceValue(blockFunction, argValues, opCached._distances);
+        const primitiveBranchDistanceValue = branchDistanceValue(blockFunction, argValues, opCached._distances, runtime, thread.target);
 
         // If it's a promise, wait until promise resolves.
         if (isPromise(primitiveReportedValue)) {
@@ -635,12 +636,28 @@ const execute = function (sequencer, thread) {
     }
 };
 
-branchDistanceValue = function (blockFunction, argValues, distanceValues) {
+branchDistanceValue = function (blockFunction, argValues, distanceValues, runtime, threadTarget) {
     const name = blockFunction.name;
     const shortname = name.replace('bound ', '');
 
     if (shortname === 'forever') {
         return [0, 1];
+    }
+
+    if (shortname === 'touchingObject') {
+        const s = new Sensing(runtime);
+        dist_args = {}
+        dist_args.DISTANCETOMENU = argValues.TOUCHINGOBJECTMENU
+        util_args = {}
+        util_args.target = threadTarget
+        const distanceTo = s.getPrimitives()["sensing_distanceto"]
+        const bound = distanceTo.bind(s);
+        const distance = bound(dist_args, util_args)
+        if (distance > 0) {
+            return [distance, 0];
+        } else {
+            return [0, 1];
+        }
     }
 
     if (['lt', 'gt', 'equals', 'and', 'or', 'not'].indexOf(shortname) < 0 && distanceValues) {
