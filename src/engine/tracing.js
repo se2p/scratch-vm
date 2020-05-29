@@ -154,10 +154,10 @@ class Tracer {
      */
     reset (targets) {
         this.targets = targets;
-        // this.traces = [];
-        for (const prop of Object.getOwnPropertyNames(this.traces)) {
-            delete this.traces[prop];
-        }
+        this.traces = {};
+    //    for (const prop of Object.getOwnPropertyNames(this.traces)) {
+    //        delete this.traces[prop];
+    //    }
     }
 
     /**
