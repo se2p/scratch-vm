@@ -553,7 +553,7 @@ const execute = function (sequencer, thread) {
         // Inputs are set during previous steps in the loop.
 
         const primitiveReportedValue = blockFunction(argValues, blockUtility);
-        const primitiveBranchDistanceValue = branchDistanceValue(blockFunction, argValues, opCached._distances, runtime, thread.target);
+        const primitiveBranchDistanceValue = branchDistanceValue(blockFunction, argValues, opCached._distances, primitiveReportedValue, runtime, thread.target);
 
         // If it's a promise, wait until promise resolves.
         if (isPromise(primitiveReportedValue)) {
@@ -636,12 +636,20 @@ const execute = function (sequencer, thread) {
     }
 };
 
-branchDistanceValue = function (blockFunction, argValues, distanceValues, runtime, threadTarget) {
+branchDistanceValue = function (blockFunction, argValues, distanceValues, primitiveReportedValue, runtime, threadTarget) {
     const name = blockFunction.name;
     const shortname = name.replace('bound ', '');
 
     if (shortname === 'forever') {
         return [0, 1];
+    }
+
+    if (shortname === 'getKeyPressed') {
+        if (primitiveReportedValue === true) {
+            return [0,1];
+        } else {
+            return [1,0];
+        }
     }
 
     if (shortname === 'touchingObject') {
