@@ -646,21 +646,29 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
 
     if (shortname === 'getKeyPressed') {
         if (primitiveReportedValue === true) {
-            return [0,1];
+            return [0, 1];
         } else {
-            return [1,0];
+            return [1, 0];
         }
     }
 
     if (shortname === 'touchingObject') {
         const s = new Sensing(runtime);
-        dist_args = {}
-        dist_args.DISTANCETOMENU = argValues.TOUCHINGOBJECTMENU
-        util_args = {}
-        util_args.target = threadTarget
-        const distanceTo = s.getPrimitives()["sensing_distanceto"]
+        dist_args = {};
+        dist_args.DISTANCETOMENU = argValues.TOUCHINGOBJECTMENU;
+        util_args = {};
+        util_args.target = threadTarget;
+
+        const touching = s.getPrimitives()['sensing_touchingobject'];
+        const touchingBound = touching.bind(s);
+        if (touchingBound(argValues, util_args)) {
+            return [0, 1];
+        }
+
+
+        const distanceTo = s.getPrimitives()['sensing_distanceto'];
         const bound = distanceTo.bind(s);
-        const distance = bound(dist_args, util_args)
+        const distance = bound(dist_args, util_args);
         if (distance > 0) {
             return [distance, 0];
         } else {
