@@ -654,6 +654,8 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
 
     if (shortname === 'touchingObject') {
         const s = new Sensing(runtime);
+
+
         dist_args = {};
         dist_args.DISTANCETOMENU = argValues.TOUCHINGOBJECTMENU;
         util_args = {};
@@ -665,6 +667,14 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
             return [0, 1];
         }
 
+        if (argValues.TOUCHINGOBJECTMENU === '_edge_') {
+            let minEdgeDist = Math.min(...[240+threadTarget.x, 180+threadTarget.y, 240 - threadTarget.x, 180 - threadTarget.y]);
+            if (minEdgeDist === 0) {
+                return [0, 1];
+            } else {
+                return [minEdgeDist, 0];
+            }
+        }
 
         const distanceTo = s.getPrimitives()['sensing_distanceto'];
         const bound = distanceTo.bind(s);
