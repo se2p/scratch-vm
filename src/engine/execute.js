@@ -610,9 +610,13 @@ const execute = function (sequencer, thread) {
         }
     }
 
+    flipIfRepeatUntil(blockCached);
     runtime.traceInfo.tracer.traceExecutedBlock(blockCached);
 
-    blockCached._distances.pop();
+    while (blockCached._distances.length > 0) {
+        blockCached._distances.pop();
+    }
+
     for (let j = 0; j < length; j++) {
         const opCached = ops[j];
         // sadly we need to do this with a loop because we still have references to this array
@@ -635,6 +639,20 @@ const execute = function (sequencer, thread) {
         }
     }
 };
+
+flipIfRepeatUntil = function(blockCached) {
+    const opcode = blockCached.opcode;
+
+    if (opcode !== 'control_repeat_until') {
+        return;
+    }
+
+    const td = blockCached._distances[0][0];
+    const fd = blockCached._distances[0][1];
+    blockCached._distances[0][0] = fd;
+    blockCached._distances[0][1] = td;
+
+}
 
 branchDistanceValue = function (blockFunction, argValues, distanceValues, primitiveReportedValue, runtime, threadTarget) {
     const name = blockFunction.name;
@@ -668,7 +686,7 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         }
 
         if (argValues.TOUCHINGOBJECTMENU === '_edge_') {
-            let minEdgeDist = Math.min(...[240+threadTarget.x, 180+threadTarget.y, 240 - threadTarget.x, 180 - threadTarget.y]);
+            let minEdgeDist = Math.min(...[240 + threadTarget.x, 180 + threadTarget.y, 240 - threadTarget.x, 180 - threadTarget.y]);
             if (minEdgeDist === 0) {
                 return [0, 1];
             } else {
