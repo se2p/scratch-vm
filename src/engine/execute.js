@@ -758,16 +758,15 @@ const getFalseDistanceNum = function (operationName, first, second, distanceValu
         return 0;
 
     } else if (operationName.includes('and')) {
-        // Not and a b == not a or not b
-        // So we flip each and apply or
-        return Math.min(distanceValues[0][0], distanceValues[1][0]);
 
-        // return distanceValues[0][1] + distanceValues[1][1];
+        //return distanceValues[0][0] + distanceValues[1][0];
+        return distanceValues[0][1] + distanceValues[1][1];
     } else if (operationName.includes('or')) {
+
         // Not or a b == not a and not b
         // return Math.min(distanceValues[0][1], distanceValues[0][1]);
 
-        return distanceValues[0][0] + distanceValues[1][0];
+        return Math.min(distanceValues[0][1], distanceValues[1][1]);
     } else if (operationName.includes('not')) {
         return distanceValues[0][0];
     }
@@ -825,16 +824,14 @@ const getFalseDistanceString = function (operationName, first, second, distanceV
         return 0;
 
     } else if (operationName.includes('and')) {
-        // Not and a b == not a or not b
-        // So we flip each and apply or
-        return Math.min(distanceValues[0][0], distanceValues[1][0]);
 
+        return distanceValues[0][0] + distanceValues[1][0];
         // return distanceValues[0][1] + distanceValues[1][1];
     } else if (operationName.includes('or')) {
         // Not or a b == not a and not b
         // return Math.min(distanceValues[0][1], distanceValues[0][1]);
 
-        return distanceValues[0][0] + distanceValues[1][0];
+        return Math.min(distanceValues[0][0], distanceValues[1][0]);
     } else if (operationName.includes('not')) {
         return distanceValues[0][0];
     }
