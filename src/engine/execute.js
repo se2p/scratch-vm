@@ -670,6 +670,14 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         }
     }
 
+    if (shortname === 'getMouseDown') {
+        if (primitiveReportedValue === true) {
+            return [0, 1];
+        } else {
+            return [1, 0];
+        }
+    }
+
     if (shortname === 'touchingObject') {
         const s = new Sensing(runtime);
 
