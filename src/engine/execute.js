@@ -543,7 +543,7 @@ const execute = function (sequencer, thread) {
         // Inputs are set during previous steps in the loop.
 
         const primitiveReportedValue = blockFunction(argValues, blockUtility);
-        const primitiveBranchDistanceValue = branchDistanceValue(blockFunction, argValues, opCached._distances, primitiveReportedValue, runtime, thread.target);
+        const primitiveBranchDistanceValue = branchDistanceValue(blockFunction, argValues, opCached._distances, primitiveReportedValue, runtime, thread.target, blockUtility);
 
         // If it's a promise, wait until promise resolves.
         if (isPromise(primitiveReportedValue)) {
@@ -644,7 +644,7 @@ flipIfRepeatUntil = function(blockCached) {
 
 }
 
-branchDistanceValue = function (blockFunction, argValues, distanceValues, primitiveReportedValue, runtime, threadTarget) {
+branchDistanceValue = function (blockFunction, argValues, distanceValues, primitiveReportedValue, runtime, threadTarget, blockUtility) {
     const name = blockFunction.name;
     const shortname = name.replace('bound ', '');
 
@@ -674,12 +674,10 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
 
         dist_args = {};
         dist_args.DISTANCETOMENU = argValues.TOUCHINGOBJECTMENU;
-        util_args = {};
-        util_args.target = threadTarget;
 
         const touching = s.getPrimitives()['sensing_touchingobject'];
         const touchingBound = touching.bind(s);
-        if (touchingBound(argValues, util_args)) {
+        if (touchingBound(argValues, blockUtility)) {
             return [0, 1];
         }
 
@@ -694,7 +692,7 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
 
         const distanceTo = s.getPrimitives()['sensing_distanceto'];
         const bound = distanceTo.bind(s);
-        const distance = bound(dist_args, util_args);
+        const distance = bound(dist_args, blockUtility);
         if (distance > 0) {
             return [distance, 0];
         } else {
