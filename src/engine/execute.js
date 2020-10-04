@@ -644,7 +644,13 @@ flipIfRepeatUntil = function(blockCached) {
 
 }
 
+let sensing = undefined;
+
 branchDistanceValue = function (blockFunction, argValues, distanceValues, primitiveReportedValue, runtime, threadTarget, blockUtility) {
+    if (sensing === undefined || sensing.runtime !== runtime) {
+        sensing = new Sensing(runtime);
+    }
+
     const name = blockFunction.name;
     const shortname = name.replace('bound ', '');
 
@@ -669,14 +675,11 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
     }
 
     if (shortname === 'touchingObject') {
-        const s = new Sensing(runtime);
-
-
         dist_args = {};
         dist_args.DISTANCETOMENU = argValues.TOUCHINGOBJECTMENU;
 
-        const touching = s.getPrimitives()['sensing_touchingobject'];
-        const touchingBound = touching.bind(s);
+        const touching = sensing.getPrimitives()['sensing_touchingobject'];
+        const touchingBound = touching.bind(sensing);
         if (touchingBound(argValues, blockUtility)) {
             return [0, 1];
         }
@@ -690,8 +693,8 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
             }
         }
 
-        const distanceTo = s.getPrimitives()['sensing_distanceto'];
-        const bound = distanceTo.bind(s);
+        const distanceTo = sensing.getPrimitives()['sensing_distanceto'];
+        const bound = distanceTo.bind(sensing);
         const distance = bound(dist_args, blockUtility);
         if (distance > 0) {
             return [distance, 0];
