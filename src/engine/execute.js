@@ -658,6 +658,17 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         return [0, 1];
     }
 
+    if (shortname === 'repeat') {
+        // Get loop counter
+        // TODO: Can this cast fail, e.g. if there is something other than a number as parameter?
+        const times = Math.round(cast.toNumber(argValues.TIMES));
+        if (times > 0) {
+            return [0, times];
+        } else {
+            return [1, 0];
+        }
+    }
+
     if (shortname === 'getKeyPressed') {
         if (primitiveReportedValue === true) {
             return [0, 1];
