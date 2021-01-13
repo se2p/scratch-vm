@@ -685,6 +685,19 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         }
     }
 
+    if (shortname === 'touchingColor') {
+        const touching = sensing.getPrimitives()['sensing_touchingcolor'];
+        const touchingColor = touching.bind(sensing);
+
+        // TODO: Instead of just storing true/false calculate actual distances
+
+        if (touchingColor(argValues, blockUtility)) {
+            return [0, 1];
+        } else {
+            return [1, 0];
+        }
+    }
+
     if (shortname === 'touchingObject') {
         dist_args = {};
         dist_args.DISTANCETOMENU = argValues.TOUCHINGOBJECTMENU;
