@@ -630,6 +630,26 @@ const execute = function (sequencer, thread) {
     }
 };
 
+
+const getCachedTrueDistance = function (distanceValues) {
+    if (distanceValues !== undefined) {
+        return distanceValues[0];
+    } else {
+        // True-distance to undefined is 1
+        return 1;
+    }
+};
+
+const getCachedFalseDistance = function (distanceValues) {
+    if (distanceValues !== undefined) {
+        return distanceValues[1];
+    } else {
+        // False-distance to undefined is 0
+        return 0;
+    }
+};
+
+
 flipIfRepeatUntil = function(blockCached) {
     const opcode = blockCached.opcode;
 
@@ -637,10 +657,9 @@ flipIfRepeatUntil = function(blockCached) {
         return;
     }
 
-    const td = blockCached._distances[0][0];
-    const fd = blockCached._distances[0][1];
-    blockCached._distances[0][0] = fd;
-    blockCached._distances[0][1] = td;
+    const td = getCachedTrueDistance(blockCached._distances[0]);
+    const fd = getCachedFalseDistance(blockCached._distances[0]);
+    blockCached._distances[0] = [fd, td];
 
 }
 
@@ -758,6 +777,7 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
     return [td, fd];
 };
 
+
 const getFalseDistanceNum = function (operationName, first, second, distanceValues) {
     if (operationName.includes('gt')) {
         const result = first - second;
@@ -783,16 +803,16 @@ const getFalseDistanceNum = function (operationName, first, second, distanceValu
     } else if (operationName.includes('and')) {
         // Not and a b == not a or not b
         // So we flip each and apply or
-        return Math.min(distanceValues[0][1], distanceValues[1][1]);
+        return Math.min(getCachedFalseDistance(distanceValues[0]), getCachedFalseDistance(distanceValues[1]));
 
         // return distanceValues[0][1] + distanceValues[1][1];
     } else if (operationName.includes('or')) {
         // Not or a b == not a and not b
         // return Math.min(distanceValues[0][1], distanceValues[0][1]);
 
-        return distanceValues[0][1] + distanceValues[1][1];
+        return getCachedFalseDistance(distanceValues[0]) + getCachedFalseDistance(distanceValues[1]);
     } else if (operationName.includes('not')) {
-        return distanceValues[0][0];
+        return getCachedTrueDistance(distanceValues[0]);
     }
     // by default just reuse the previous value
     return distanceValues[0];
@@ -817,11 +837,11 @@ const getTrueDistanceNum = function (operationName, first, second, distanceValue
     } else if (operationName.includes('equals')) {
         return Math.abs(first - second);
     } else if (operationName.includes('and')) {
-        return distanceValues[0][0] + distanceValues[1][0];
+        return getCachedTrueDistance(distanceValues[0]) + getCachedTrueDistance(distanceValues[1]);
     } else if (operationName.includes('or')) {
-        return Math.min(distanceValues[0][0], distanceValues[1][0]);
+        return Math.min(getCachedTrueDistance(distanceValues[0]), getCachedTrueDistance(distanceValues[1]));
     } else if (operationName.includes('not')) {
-        return distanceValues[0][1];
+        return getCachedFalseDistance(distanceValues[0]);
     }
     // by default just reuse the previous value
     return distanceValues[0];
@@ -850,21 +870,22 @@ const getFalseDistanceString = function (operationName, first, second, distanceV
     } else if (operationName.includes('and')) {
         // Not and a b == not a or not b
         // So we flip each and apply or
-        return Math.min(distanceValues[0][1], distanceValues[1][1]);
+        return Math.min(getCachedFalseDistance(distanceValues[0]), getCachedFalseDistance(distanceValues[1]));
 
         // return distanceValues[0][1] + distanceValues[1][1];
     } else if (operationName.includes('or')) {
         // Not or a b == not a and not b
         // return Math.min(distanceValues[0][1], distanceValues[0][1]);
 
-        return distanceValues[0][1] + distanceValues[1][1];
+        return getCachedFalseDistance(distanceValues[0]) + getCachedFalseDistance(distanceValues[1]);
     } else if (operationName.includes('not')) {
-        return distanceValues[0][0];
+        return getCachedTrueDistance(distanceValues[0]);
     }
     // by default just reuse the previous value
     return distanceValues[0];
 
 };
+
 
 const getTrueDistanceString = function (operationName, first, second, distanceValues) {
     if (operationName.includes('gt')) {
@@ -885,11 +906,11 @@ const getTrueDistanceString = function (operationName, first, second, distanceVa
         }
         return 1;
     } else if (operationName.includes('and')) {
-        return distanceValues[0][0] + distanceValues[1][0];
+        return getCachedTrueDistance(distanceValues[0]) + getCachedTrueDistance(distanceValues[1]);
     } else if (operationName.includes('or')) {
-        return Math.min(distanceValues[0][0], distanceValues[1][0]);
+        return Math.min(getCachedTrueDistance(distanceValues[0]), getCachedTrueDistance(distanceValues[1]));
     } else if (operationName.includes('not')) {
-        return distanceValues[0][1];
+        return getCachedFalseDistance(distanceValues[0]);
     }
     // by default just reuse the previous value
     return distanceValues[0];
