@@ -5,6 +5,7 @@ const Thread = require('./thread');
 const {Map} = require('immutable');
 const cast = require('../util/cast');
 const Sensing = require('../blocks/scratch3_sensing');
+const twgl = require('twgl.js');
 
 /**
  * Single BlockUtility instance reused by execute for every pritimive ran.
@@ -708,13 +709,56 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         const touching = sensing.getPrimitives()['sensing_touchingcolor'];
         const touchingColor = touching.bind(sensing);
 
-        // TODO: Instead of just storing true/false calculate actual distances
-
         if (touchingColor(argValues, blockUtility)) {
             return [0, 1];
-        } else {
-            return [1, 0];
         }
+
+        const colorMatches = (a, b, offset) => (
+            (a[0] & 0b11111000) === (b[offset + 0] & 0b11111000) &&
+            (a[1] & 0b11111000) === (b[offset + 1] & 0b11111000) &&
+            (a[2] & 0b11110000) === (b[offset + 2] & 0b11110000)
+        );
+
+        const renderer = threadTarget.renderer;
+        const color3b = cast.toRgbColorList(argValues.COLOR);
+        const stageDiameter = Math.sqrt(
+            Math.pow((renderer._xRight - renderer._xLeft), 2) +
+            Math.pow((renderer._yTop - renderer._yBottom), 2)
+        );
+
+        const point = twgl.v3.create();
+        const color = new Uint8ClampedArray(4);
+        const touchables = [];
+        for (let index = renderer._visibleDrawList.length - 1; index >= 0; index--){
+            const id = renderer._visibleDrawList[index];
+            if (id !== threadTarget.drawableID) {
+                const drawable = renderer._allDrawables[id];
+                touchables.push({
+                    id,
+                    drawable
+                });
+            }
+        }
+        const distance = [];
+        for (let y = renderer._yBottom; y <= renderer._yTop; y++) {
+            for (let x = renderer._xLeft; x <= renderer._xRight; x++) {
+                point[1] = y;
+                point[0] = x;
+                renderer.constructor.sampleColor3b(point, touchables, color);
+                if (colorMatches(color, color3b, 0)) {
+                    distance.push(
+                        Math.sqrt(
+                            Math.pow(x - threadTarget.x, 2) +
+                            Math.pow(y - threadTarget.y, 2)
+                        )
+                    );
+                    // console.log('matches', color3b, distance);
+                }
+            }
+        }
+        const minDistance = distance.length === 0 ? stageDiameter : Math.min(...distance);
+        console.log(color3b, minDistance);
+        return [minDistance, 0];
     }
 
     if (shortname === 'touchingObject') {
