@@ -740,8 +740,8 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         }
         let r = 1;
         let rPrev = 1;
-        const coordinates = [];
         while (r < stageDiameter) {
+            const coordinates = [];
             for (const x of [-r, r]) {
                 for (let y = -r; y <= r; y++) {
                     coordinates.push([x, y]);
