@@ -75,6 +75,7 @@ class Tracer {
     constructor () {
         // this.traces = [];
         this.traces = {};
+        this.coverage = new Set();
         this.targets = [];
         this.lastTraced = null;
     }
@@ -121,6 +122,7 @@ class Tracer {
      * @param {BlockCached} block  - the block that is added as a trace.
      */
     traceExecutedBlock (block) {
+        this.coverage.add(block.id);
         if (!this._filterBlock(block)) {
             return;
         }
@@ -155,6 +157,7 @@ class Tracer {
     reset (targets) {
         this.targets = targets;
         this.traces = {};
+        this.coverage = new Set();
     //    for (const prop of Object.getOwnPropertyNames(this.traces)) {
     //        delete this.traces[prop];
     //    }
