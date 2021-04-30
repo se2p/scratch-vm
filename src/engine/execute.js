@@ -516,7 +516,10 @@ const execute = function (sequencer, thread) {
     }
 
     // If we do not have any ops and this is a hat we can set the distances automatically
-    if (length === 0 && (blockCached.opcode.startsWith('event_') || blockCached.opcode === 'control_start_as_clone')) {
+    if (length === 0 && (blockCached.opcode.startsWith('event_') ||
+        blockCached.opcode === 'control_start_as_clone')) {
+        blockCached._distances.push([0, 1]);
+    } else if (blockCached.opcode === 'procedures_definition' || blockCached.opcode === 'procedures_call') {
         blockCached._distances.push([0, 1]);
     }
 
