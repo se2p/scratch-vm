@@ -604,10 +604,12 @@ const execute = function (sequencer, thread) {
         }
     }
 
-    flipIfRepeatUntil(blockCached);
+    // TODO: Why?
+    // flipIfRepeatUntil(blockCached);
     runtime.traceInfo.tracer.traceExecutedBlock(blockCached);
 
-    while (blockCached._distances.length > 0) {
+    // TODO: Why > 0?
+    while (blockCached._distances.length > 1) {
         blockCached._distances.pop();
     }
 
