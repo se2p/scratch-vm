@@ -604,12 +604,10 @@ const execute = function (sequencer, thread) {
         }
     }
 
-    // TODO: Why?
-    // flipIfRepeatUntil(blockCached);
     runtime.traceInfo.tracer.traceExecutedBlock(blockCached);
 
     // TODO: Why > 0?
-    while (blockCached._distances.length > 1) {
+    while (blockCached._distances.length > 0) {
         blockCached._distances.pop();
     }
 
@@ -655,19 +653,6 @@ const getCachedFalseDistance = function (distanceValues) {
     }
 };
 
-
-flipIfRepeatUntil = function(blockCached) {
-    const opcode = blockCached.opcode;
-
-    if (opcode !== 'control_repeat_until') {
-        return;
-    }
-
-    const td = getCachedTrueDistance(blockCached._distances[0]);
-    const fd = getCachedFalseDistance(blockCached._distances[0]);
-    blockCached._distances[0] = [fd, td];
-
-}
 
 let sensing = undefined;
 
