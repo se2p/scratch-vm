@@ -2063,6 +2063,7 @@ class Runtime extends EventEmitter {
      * inactive threads after each iteration.
      */
     _step () {
+        this.stepsExecuted++;
         if (this.profiler !== null) {
             if (stepProfilerId === -1) {
                 stepProfilerId = this.profiler.idByName('Runtime._step');
@@ -2610,11 +2611,9 @@ class Runtime extends EventEmitter {
             interval = Runtime.THREAD_STEP_INTERVAL_COMPATIBILITY;
         }
         this.currentStepTime = interval;
-        this.stepsExecuted = 0;
         this._steppingInterval = setInterval(() => {
             if (!this.paused) {
                 this._step();
-                this.stepsExecuted++;
             }
         }, interval);
         this.emit(Runtime.RUNTIME_STARTED);
