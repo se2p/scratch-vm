@@ -72,8 +72,8 @@ class BlockUtility {
      * @return {boolean} - true if the stack timer has finished.
      */
     stackTimerFinished () {
-        const timeElapsed = this.stackFrame.timer.timeElapsed();
-        if (timeElapsed < this.stackFrame.duration) {
+        const stepsElapsed = this.sequencer.runtime.stepsExecuted - this.stackFrame.stepOffset;
+        if (stepsElapsed < this.stackFrame.duration) {
             return false;
         }
         return true;
@@ -84,7 +84,7 @@ class BlockUtility {
      * @return {boolean} - true if the stack timer needs to be initialized.
      */
     stackTimerNeedsInit () {
-        return !this.stackFrame.timer;
+        return !this.stackFrame.hasOwnProperty('stepOffset');
     }
 
     /**
@@ -98,7 +98,8 @@ class BlockUtility {
             this.stackFrame.timer = new Timer();
         }
         this.stackFrame.timer.start();
-        this.stackFrame.duration = duration;
+        this.stackFrame.stepOffset = this.sequencer.runtime.stepsExecuted;
+        this.stackFrame.duration = duration / this.sequencer.runtime.currentStepTime;
     }
 
     /**
