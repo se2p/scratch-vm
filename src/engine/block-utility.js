@@ -68,27 +68,28 @@ class BlockUtility {
     }
 
     /**
-     * Check the stack timer and return a boolean based on whether it has finished or not.
-     * @return {boolean} - true if the stack timer has finished.
+     * Check the number of executed steps and return a boolean based on whether the required amount of steps have
+     * elapsed or not.
+     * @return {boolean} - true if the required number of steps have elapsed.
      */
     stackTimerFinished () {
-        const timeElapsed = this.stackFrame.timer.timeElapsed();
-        if (timeElapsed < this.stackFrame.duration) {
+        const stepsElapsed = this.sequencer.runtime.stepsExecuted - this.stackFrame.stepOffset;
+        if (stepsElapsed < this.stackFrame.duration) {
             return false;
         }
         return true;
     }
 
     /**
-     * Check if the stack timer needs initialization.
-     * @return {boolean} - true if the stack timer needs to be initialized.
+     * Check if the stack timer measured in steps and time needs initialization.
+     * @return {boolean} - true if the stack timer measured in steps needs to be initialized.
      */
     stackTimerNeedsInit () {
-        return !this.stackFrame.timer;
+        return !this.stackFrame.hasOwnProperty('stepOffset') && !this.stackFrame.timer;
     }
 
     /**
-     * Create and start a stack timer
+     * Create and start a stack timer measuring time and steps.
      * @param {number} duration - a duration in milliseconds to set the timer for.
      */
     startStackTimer (duration) {
@@ -98,7 +99,8 @@ class BlockUtility {
             this.stackFrame.timer = new Timer();
         }
         this.stackFrame.timer.start();
-        this.stackFrame.duration = duration;
+        this.stackFrame.stepOffset = this.sequencer.runtime.stepsExecuted;
+        this.stackFrame.duration = duration / this.sequencer.runtime.currentStepTime;
     }
 
     /**

@@ -2,6 +2,7 @@ const test = require('tap').test;
 const Control = require('../../src/blocks/scratch3_control');
 const Runtime = require('../../src/engine/runtime');
 const BlockUtility = require('../../src/engine/block-utility');
+const Sequencer = require('../../src/engine/sequencer');
 
 test('getPrimitives', t => {
     const rt = new Runtime();
@@ -257,14 +258,16 @@ test('allAtOnce', t => {
 
 test('wait', t => {
     const rt = new Runtime();
+    rt.currentStepTime = Runtime.THREAD_STEP_INTERVAL;
     const c = new Control(rt);
     const args = {DURATION: .01};
     const waitTime = args.DURATION * 1000;
     const startTest = Date.now();
     const threshold = 1000 / 60; // 60 hz
     let yields = 0;
-    const util = new BlockUtility();
+    const util = new BlockUtility(rt.sequencer);
     const mockUtil = {
+        sequencer: rt.sequencer,
         stackFrame: {},
         yield: () => yields++,
         stackTimerNeedsInit: util.stackTimerNeedsInit,
@@ -279,6 +282,7 @@ test('wait', t => {
     let timeElapsed = 0;
     while (timeElapsed < waitTime) {
         timeElapsed = mockUtil.stackFrame.timer.timeElapsed();
+        rt.stepsExecuted++;
         // In case util.timer is broken - have our own "exit"
         if (Date.now() - startTest > timeElapsed + threshold) {
             break;
@@ -287,7 +291,7 @@ test('wait', t => {
 
     c.wait(args, mockUtil);
     t.equal(yields, 1, 'Second call after timeElapsed does not yield');
-    t.equal(waitTime, mockUtil.stackFrame.duration);
+    t.equal(waitTime / rt.currentStepTime, mockUtil.stackFrame.duration);
     t.ok(timeElapsed >= (waitTime - threshold) &&
          timeElapsed <= (waitTime + threshold));
     t.end();

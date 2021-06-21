@@ -326,6 +326,11 @@ class Runtime extends EventEmitter {
          */
         this.currentStepTime = null;
 
+        /**
+         * Counts the number of steps executed so far.
+         */
+        this.stepsExecuted = 0;
+
         // Set an intial value for this.currentMSecs
         this.updateCurrentMSecs();
 
@@ -629,7 +634,7 @@ class Runtime extends EventEmitter {
     static get PERIPHERAL_LIST_UPDATE () {
         return 'PERIPHERAL_LIST_UPDATE';
     }
-    
+
     /**
      * Event name for when the user picks a bluetooth device to connect to
      * via Companion Device Manager (CDM)
@@ -2058,6 +2063,7 @@ class Runtime extends EventEmitter {
      * inactive threads after each iteration.
      */
     _step () {
+        this.stepsExecuted++;
         if (this.profiler !== null) {
             if (stepProfilerId === -1) {
                 stepProfilerId = this.profiler.idByName('Runtime._step');
