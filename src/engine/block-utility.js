@@ -104,6 +104,16 @@ class BlockUtility {
     }
 
     /**
+     * Let threads sleep for the specified amount of milliseconds.
+     * This can be used to let the stepper step through active threads.
+     * @param {number} duration the sleep duration in milliseconds
+     * @return {Promise<void>} returns an empty promise
+     */
+    async sleep (duration = 1) {
+        return new Promise(resolve => setTimeout(resolve, duration));
+    }
+
+    /**
      * Set the thread to yield.
      */
     yield () {
