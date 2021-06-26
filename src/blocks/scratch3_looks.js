@@ -334,19 +334,18 @@ class Scratch3LooksBlocks {
 
     sayforsecs (args, util) {
         this.say(args, util);
-        // Convert milliseconds to seconds
+        // Convert milliseconds to seconds.
         const duration = Math.max(0, 1000 * Cast.toNumber(args.SECS));
-        // Save the stepOffset and convert duration in seconds to duration in steps.
+        // Save the stepOffset and convert from time to steps.
         const stepOffset = util.sequencer.runtime.stepsExecuted;
         const stepDuration = duration / util.sequencer.runtime.currentStepTime;
         const target = util.target;
         const usageId = this._getBubbleState(target).usageId;
         return new Promise(async resolve => {
             let stepsElapsed = util.sequencer.runtime.stepsExecuted - stepOffset;
-            // Wait until the required amount of steps has been executed.
+            // Wait until the required amount of steps have been executed.
             while (stepsElapsed < stepDuration) {
                 stepsElapsed = util.sequencer.runtime.stepsExecuted - stepOffset;
-                // Sleep to allow the runtime class to execute steps.
                 await util.sleep();
             }
             // Clear say bubble if it hasn't been changed and proceed.
@@ -363,9 +362,9 @@ class Scratch3LooksBlocks {
 
     thinkforsecs (args, util) {
         this.think(args, util);
-        // Convert milliseconds to seconds
+        // Convert milliseconds to seconds.
         const duration = Math.max(0, 1000 * Cast.toNumber(args.SECS));
-        // Save the stepOffset and convert duration in seconds to duration in steps.
+        // Save the stepOffset and convert from time to steps.
         const stepOffset = util.sequencer.runtime.stepsExecuted;
         const stepDuration = duration / util.sequencer.runtime.currentStepTime;
         const target = util.target;
@@ -375,7 +374,6 @@ class Scratch3LooksBlocks {
             // Wait until the required amount of steps have been executed.
             while (stepsElapsed < stepDuration) {
                 stepsElapsed = util.sequencer.runtime.stepsExecuted - stepOffset;
-                // Sleep to allow the runtime class to execute steps.
                 await util.sleep();
             }
             // Clear think bubble if it hasn't been changed and proceed.
