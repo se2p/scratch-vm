@@ -109,7 +109,7 @@ class BlockUtility {
      * @param {number} duration the sleep duration in milliseconds
      * @return {Promise<void>} returns an empty promise
      */
-    async sleep (duration = 1) {
+    async sleep (duration) {
         return new Promise(resolve => setTimeout(resolve, duration));
     }
 
