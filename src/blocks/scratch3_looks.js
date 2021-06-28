@@ -346,8 +346,8 @@ class Scratch3LooksBlocks {
             // Wait until the required amount of steps have been executed.
             while (stepsElapsed < stepDuration) {
                 stepsElapsed = util.sequencer.runtime.stepsExecuted - stepOffset;
-                // Wait for the next step to happen.
-                await util.sleep(util.sequencer.runtime.currentStepTime);
+                // Wait for the next step to happen. Sleep for only 1ms to reduce time drift.
+                await util.sleep(1);
             }
             // Clear say bubble if it hasn't been changed and proceed.
             if (this._getBubbleState(target).usageId === usageId) {
@@ -375,8 +375,8 @@ class Scratch3LooksBlocks {
             // Wait until the required amount of steps have been executed.
             while (stepsElapsed < stepDuration) {
                 stepsElapsed = util.sequencer.runtime.stepsExecuted - stepOffset;
-                // Wait for the next step to happen.
-                await util.sleep(util.sequencer.runtime.currentStepTime);
+                // Wait for the next step to happen. Sleep for only 1ms to reduce time drift.
+                await util.sleep(1);
             }
             // Clear think bubble if it hasn't been changed and proceed.
             if (this._getBubbleState(target).usageId === usageId) {
