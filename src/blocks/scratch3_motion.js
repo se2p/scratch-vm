@@ -143,10 +143,10 @@ class Scratch3MotionBlocks {
 
     glide (args, util) {
         if (util.stackFrame.timer) {
-            const timeElapsed = util.stackFrame.timer.timeElapsed();
-            if (timeElapsed < util.stackFrame.duration * 1000) {
+            const stepsElapsed = this.runtime.stepsExecuted - util.stackFrame.stepOffset;
+            if (stepsElapsed < util.stackFrame.duration) {
                 // In progress: move to intermediate position.
-                const frac = timeElapsed / (util.stackFrame.duration * 1000);
+                const frac = stepsElapsed / util.stackFrame.duration;
                 const dx = frac * (util.stackFrame.endX - util.stackFrame.startX);
                 const dy = frac * (util.stackFrame.endY - util.stackFrame.startY);
                 util.target.setXY(
@@ -162,7 +162,9 @@ class Scratch3MotionBlocks {
             // First time: save data for future use.
             util.stackFrame.timer = new Timer();
             util.stackFrame.timer.start();
-            util.stackFrame.duration = Cast.toNumber(args.SECS);
+            // Save the duration in the unit of steps rather than milliseconds to enforce determinism.
+            util.stackFrame.duration = Math.max(0, 1000 * Cast.toNumber(args.DURATION)) / this.runtime.currentStepTime;
+            util.stackFrame.stepOffset = this.runtime.stepsExecuted;
             util.stackFrame.startX = util.target.x;
             util.stackFrame.startY = util.target.y;
             util.stackFrame.endX = Cast.toNumber(args.X);
