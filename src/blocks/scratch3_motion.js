@@ -163,7 +163,7 @@ class Scratch3MotionBlocks {
             util.stackFrame.timer = new Timer();
             util.stackFrame.timer.start();
             // Save the duration in the unit of steps rather than milliseconds to enforce determinism.
-            util.stackFrame.duration = Math.max(0, 1000 * Cast.toNumber(args.DURATION)) / this.runtime.currentStepTime;
+            util.stackFrame.duration = Math.max(0, 1000 * Cast.toNumber(args.SECS)) / this.runtime.currentStepTime;
             util.stackFrame.stepOffset = this.runtime.stepsExecuted;
             util.stackFrame.startX = util.target.x;
             util.stackFrame.startY = util.target.y;
