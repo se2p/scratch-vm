@@ -254,6 +254,14 @@ class Scratch3DataBlocks {
     static get LIST_ITEM_LIMIT () {
         return 200000;
     }
+
+    /**
+     * Event name for a variable value change.
+     * @const {string}
+     */
+    static get CHANGE_VARIABLE () {
+        return 'CHANGE_VARIABLE'
+    }
 }
 
 module.exports = Scratch3DataBlocks;
