@@ -71,6 +71,14 @@ class Scratch3LooksBlocks {
     }
 
     /**
+     * Event name for a text bubble being destroyed.
+     * @const {string}
+     */
+    static get SAY_OR_THINK_DELETE () {
+        return 'DELETE_SAY_OR_THINK'
+    }
+
+    /**
      * Limit for say bubble string.
      * @const {string}
      */
@@ -275,6 +283,9 @@ class Scratch3LooksBlocks {
         bubbleState.type = type;
         bubbleState.text = this._formatBubbleText(text);
         bubbleState.usageId = uid();
+        if (text === '') {
+            this.runtime.emit(Scratch3LooksBlocks.SAY_OR_THINK_DELETE, target, type);
+        }
         this._renderBubble(target);
     }
 
