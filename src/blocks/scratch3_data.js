@@ -49,6 +49,7 @@ class Scratch3DataBlocks {
         if (variable.isCloud) {
             util.ioQuery('cloud', 'requestUpdateVariable', [variable.name, args.VALUE]);
         }
+        this.runtime.emit(Scratch3DataBlocks.CHANGE_VARIABLE, variable.name, args.value);
     }
 
     changeVariableBy (args, util) {
@@ -62,6 +63,7 @@ class Scratch3DataBlocks {
         if (variable.isCloud) {
             util.ioQuery('cloud', 'requestUpdateVariable', [variable.name, newValue]);
         }
+        this.runtime.emit(Scratch3DataBlocks.CHANGE_VARIABLE, variable.name, newValue);
     }
 
     changeMonitorVisibility (id, visible) {
