@@ -352,10 +352,10 @@ class RenderedTarget extends Target {
         if (this.renderer) {
             this.renderer.updateDrawableVisible(this.drawableID, this.visible);
             if (this.visible) {
-                this.emit(RenderedTarget.EVENT_TARGET_VISUAL_CHANGE, this);
                 this.runtime.requestRedraw();
             }
         }
+        this.emit(RenderedTarget.EVENT_TARGET_VISUAL_CHANGE, this, this.visible);
         this.runtime.requestTargetsUpdate(this);
     }
 
