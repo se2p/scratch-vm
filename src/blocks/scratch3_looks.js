@@ -75,7 +75,7 @@ class Scratch3LooksBlocks {
      * @const {string}
      */
     static get SAY_OR_THINK_DELETE () {
-        return 'DELETE_SAY_OR_THINK'
+        return 'DELETE_SAY_OR_THINK';
     }
 
     /**
@@ -90,7 +90,7 @@ class Scratch3LooksBlocks {
      * Limit for ghost effect
      * @const {object}
      */
-    static get EFFECT_GHOST_LIMIT (){
+    static get EFFECT_GHOST_LIMIT () {
         return {min: 0, max: 100};
     }
 
@@ -98,7 +98,7 @@ class Scratch3LooksBlocks {
      * Limit for brightness effect
      * @const {object}
      */
-    static get EFFECT_BRIGHTNESS_LIMIT (){
+    static get EFFECT_BRIGHTNESS_LIMIT () {
         return {min: -100, max: 100};
     }
 
@@ -265,7 +265,8 @@ class Scratch3LooksBlocks {
         }
 
         // Limit the length of the string.
-        text = String(text).substr(0, Scratch3LooksBlocks.SAY_BUBBLE_LIMIT);
+        text = String(text)
+            .substr(0, Scratch3LooksBlocks.SAY_BUBBLE_LIMIT);
 
         return text;
     }
@@ -301,7 +302,8 @@ class Scratch3LooksBlocks {
             looks_thinkforsecs: this.thinkforsecs,
             looks_show: this.show,
             looks_hide: this.hide,
-            looks_hideallsprites: () => {}, // legacy no-op block
+            looks_hideallsprites: () => {
+            }, // legacy no-op block
             looks_switchcostumeto: this.switchCostume,
             looks_switchbackdropto: this.switchBackdrop,
             looks_switchbackdroptoandwait: this.switchBackdropAndWait,
@@ -312,8 +314,10 @@ class Scratch3LooksBlocks {
             looks_cleargraphiceffects: this.clearEffects,
             looks_changesizeby: this.changeSize,
             looks_setsizeto: this.setSize,
-            looks_changestretchby: () => {}, // legacy no-op blocks
-            looks_setstretchto: () => {},
+            looks_changestretchby: () => {
+            }, // legacy no-op blocks
+            looks_setstretchto: () => {
+            },
             looks_gotofrontback: this.goToFrontBack,
             looks_goforwardbackwardlayers: this.goForwardBackwardLayers,
             looks_size: this.getSize,
@@ -344,28 +348,20 @@ class Scratch3LooksBlocks {
     }
 
     sayforsecs (args, util) {
-        this.say(args, util);
-        // Convert milliseconds to seconds.
-        const duration = Math.max(0, 1000 * Cast.toNumber(args.SECS));
-        // Save the stepOffset and convert from time to steps.
-        const stepOffset = util.sequencer.runtime.stepsExecuted;
-        const stepDuration = duration / util.sequencer.runtime.currentStepTime;
-        const target = util.target;
-        const usageId = this._getBubbleState(target).usageId;
-        return new Promise(async resolve => {
-            let stepsElapsed = util.sequencer.runtime.stepsExecuted - stepOffset;
-            // Wait until the required amount of steps have been executed.
-            while (stepsElapsed < stepDuration) {
-                stepsElapsed = util.sequencer.runtime.stepsExecuted - stepOffset;
-                // Wait for the next step to happen. Sleep for only 1ms to reduce time drift.
-                await util.sleep(1);
-            }
-            // Clear say bubble if it hasn't been changed and proceed.
-            if (this._getBubbleState(target).usageId === usageId) {
-                this._updateBubble(target, 'say', '');
-            }
-            resolve();
-        });
+        // If we enter for first time, let the sprite start talking initialize the timer.
+        if (util.stackTimerNeedsInit()) {
+            this.say(args, util);
+            const duration = Math.max(0, 1000 * Cast.toNumber(args.SECS));
+            util.startStackTimer(duration);
+            util.yield();
+            // Else if the sprite is already talking and the assigned talking time has not ran out yet.
+            // Let the thread perform a Wait.
+        } else if (!util.stackTimerFinished()) {
+            util.yield();
+            // If the has been talking long enough, remove the bubble.
+        } else if (util.stackTimerFinished()) {
+            this._updateBubble(util.target, 'say', '');
+        }
     }
 
     think (args, util) {
@@ -373,28 +369,20 @@ class Scratch3LooksBlocks {
     }
 
     thinkforsecs (args, util) {
-        this.think(args, util);
-        // Convert milliseconds to seconds.
-        const duration = Math.max(0, 1000 * Cast.toNumber(args.SECS));
-        // Save the stepOffset and convert from time to steps.
-        const stepOffset = util.sequencer.runtime.stepsExecuted;
-        const stepDuration = duration / util.sequencer.runtime.currentStepTime;
-        const target = util.target;
-        const usageId = this._getBubbleState(target).usageId;
-        return new Promise(async resolve => {
-            let stepsElapsed = util.sequencer.runtime.stepsExecuted - stepOffset;
-            // Wait until the required amount of steps have been executed.
-            while (stepsElapsed < stepDuration) {
-                stepsElapsed = util.sequencer.runtime.stepsExecuted - stepOffset;
-                // Wait for the next step to happen. Sleep for only 1ms to reduce time drift.
-                await util.sleep(1);
-            }
-            // Clear think bubble if it hasn't been changed and proceed.
-            if (this._getBubbleState(target).usageId === usageId) {
-                this._updateBubble(target, 'think', '');
-            }
-            resolve();
-        });
+        // If we enter for first time, let the sprite start thinking and start the stackTimer.
+        if (util.stackTimerNeedsInit()) {
+            this.think(args, util);
+            const duration = Math.max(0, 1000 * Cast.toNumber(args.SECS));
+            util.startStackTimer(duration);
+            util.yield();
+            // Else if the sprite is already in deep thoughts and the specified thinkingTime has not ran out yet.
+            // Let the thread perform a Wait.
+        } else if (!util.stackTimerFinished()) {
+            util.yield();
+            // If the sprite has been thinking for the specified amount of time, remove the bubble.
+        } else if (util.stackTimerFinished()) {
+            this._updateBubble(util.target, 'think', '');
+        }
     }
 
     show (args, util) {
@@ -429,9 +417,9 @@ class Scratch3LooksBlocks {
                 target.setCostume(target.currentCostume + 1);
             } else if (requestedCostume === 'previous costume') {
                 target.setCostume(target.currentCostume - 1);
-            // Try to cast the string to a number (and treat it as a costume index)
-            // Pure whitespace should not be treated as a number
-            // Note: isNaN will cast the string to a number before checking if it's NaN
+                // Try to cast the string to a number (and treat it as a costume index)
+                // Pure whitespace should not be treated as a number
+                // Note: isNaN will cast the string to a number before checking if it's NaN
             } else if (!(isNaN(requestedCostume) || Cast.isWhiteSpace(requestedCostume))) {
                 target.setCostume(optZeroIndex ? Number(requestedCostume) : Number(requestedCostume) - 1);
             }
@@ -476,9 +464,9 @@ class Scratch3LooksBlocks {
 
                     stage.setCostume(nextCostume);
                 }
-            // Try to cast the string to a number (and treat it as a costume index)
-            // Pure whitespace should not be treated as a number
-            // Note: isNaN will cast the string to a number before checking if it's NaN
+                // Try to cast the string to a number (and treat it as a costume index)
+                // Pure whitespace should not be treated as a number
+                // Note: isNaN will cast the string to a number before checking if it's NaN
             } else if (!(isNaN(requestedBackdrop) || Cast.isWhiteSpace(requestedBackdrop))) {
                 stage.setCostume(optZeroIndex ? Number(requestedBackdrop) : Number(requestedBackdrop) - 1);
             }
@@ -567,7 +555,8 @@ class Scratch3LooksBlocks {
     }
 
     changeEffect (args, util) {
-        const effect = Cast.toString(args.EFFECT).toLowerCase();
+        const effect = Cast.toString(args.EFFECT)
+            .toLowerCase();
         const change = Cast.toNumber(args.CHANGE);
         if (!util.target.effects.hasOwnProperty(effect)) return;
         let newValue = change + util.target.effects[effect];
@@ -576,7 +565,8 @@ class Scratch3LooksBlocks {
     }
 
     setEffect (args, util) {
-        const effect = Cast.toString(args.EFFECT).toLowerCase();
+        const effect = Cast.toString(args.EFFECT)
+            .toLowerCase();
         let value = Cast.toNumber(args.VALUE);
         value = this.clampEffect(effect, value);
         util.target.setEffect(effect, value);
