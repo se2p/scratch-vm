@@ -348,17 +348,17 @@ class Scratch3LooksBlocks {
     }
 
     sayforsecs (args, util) {
-        // If we enter for first time, let the sprite start talking initialize the timer.
+        // If we enter for first time, let the sprite start talking and initialize the timer.
         if (util.stackTimerNeedsInit()) {
             this.say(args, util);
             const duration = Math.max(0, 1000 * Cast.toNumber(args.SECS));
             util.startStackTimer(duration);
             util.yield();
-            // Else if the sprite is already talking and the assigned talking time has not ran out yet.
-            // Let the thread perform a Wait.
+            // Else if the sprite is already talking and the assigned talking time has not ran out yet,
+            // let the thread perform a Wait.
         } else if (!util.stackTimerFinished()) {
             util.yield();
-            // If the has been talking long enough, remove the bubble.
+            // If the sprite has been talking long enough, remove the bubble.
         } else if (util.stackTimerFinished()) {
             this._updateBubble(util.target, 'say', '');
         }
@@ -375,8 +375,8 @@ class Scratch3LooksBlocks {
             const duration = Math.max(0, 1000 * Cast.toNumber(args.SECS));
             util.startStackTimer(duration);
             util.yield();
-            // Else if the sprite is already in deep thoughts and the specified thinkingTime has not ran out yet.
-            // Let the thread perform a Wait.
+            // Else if the sprite is already in deep thoughts and the specified thinkingTime has not ran out yet,
+            // let the thread perform a Wait.
         } else if (!util.stackTimerFinished()) {
             util.yield();
             // If the sprite has been thinking for the specified amount of time, remove the bubble.
