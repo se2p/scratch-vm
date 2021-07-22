@@ -75,7 +75,7 @@ class Scratch3LooksBlocks {
      * @const {string}
      */
     static get SAY_OR_THINK_DELETE () {
-        return 'DELETE_SAY_OR_THINK';
+        return 'DELETE_SAY_OR_THINK'
     }
 
     /**
@@ -90,7 +90,7 @@ class Scratch3LooksBlocks {
      * Limit for ghost effect
      * @const {object}
      */
-    static get EFFECT_GHOST_LIMIT () {
+    static get EFFECT_GHOST_LIMIT (){
         return {min: 0, max: 100};
     }
 
@@ -98,7 +98,7 @@ class Scratch3LooksBlocks {
      * Limit for brightness effect
      * @const {object}
      */
-    static get EFFECT_BRIGHTNESS_LIMIT () {
+    static get EFFECT_BRIGHTNESS_LIMIT (){
         return {min: -100, max: 100};
     }
 
@@ -265,8 +265,7 @@ class Scratch3LooksBlocks {
         }
 
         // Limit the length of the string.
-        text = String(text)
-            .substr(0, Scratch3LooksBlocks.SAY_BUBBLE_LIMIT);
+        text = String(text).substr(0, Scratch3LooksBlocks.SAY_BUBBLE_LIMIT);
 
         return text;
     }
@@ -302,8 +301,7 @@ class Scratch3LooksBlocks {
             looks_thinkforsecs: this.thinkforsecs,
             looks_show: this.show,
             looks_hide: this.hide,
-            looks_hideallsprites: () => {
-            }, // legacy no-op block
+            looks_hideallsprites: () => {}, // legacy no-op block
             looks_switchcostumeto: this.switchCostume,
             looks_switchbackdropto: this.switchBackdrop,
             looks_switchbackdroptoandwait: this.switchBackdropAndWait,
@@ -314,10 +312,8 @@ class Scratch3LooksBlocks {
             looks_cleargraphiceffects: this.clearEffects,
             looks_changesizeby: this.changeSize,
             looks_setsizeto: this.setSize,
-            looks_changestretchby: () => {
-            }, // legacy no-op blocks
-            looks_setstretchto: () => {
-            },
+            looks_changestretchby: () => {}, // legacy no-op blocks
+            looks_setstretchto: () => {},
             looks_gotofrontback: this.goToFrontBack,
             looks_goforwardbackwardlayers: this.goForwardBackwardLayers,
             looks_size: this.getSize,
@@ -417,9 +413,9 @@ class Scratch3LooksBlocks {
                 target.setCostume(target.currentCostume + 1);
             } else if (requestedCostume === 'previous costume') {
                 target.setCostume(target.currentCostume - 1);
-                // Try to cast the string to a number (and treat it as a costume index)
-                // Pure whitespace should not be treated as a number
-                // Note: isNaN will cast the string to a number before checking if it's NaN
+            // Try to cast the string to a number (and treat it as a costume index)
+            // Pure whitespace should not be treated as a number
+            // Note: isNaN will cast the string to a number before checking if it's NaN
             } else if (!(isNaN(requestedCostume) || Cast.isWhiteSpace(requestedCostume))) {
                 target.setCostume(optZeroIndex ? Number(requestedCostume) : Number(requestedCostume) - 1);
             }
@@ -464,9 +460,9 @@ class Scratch3LooksBlocks {
 
                     stage.setCostume(nextCostume);
                 }
-                // Try to cast the string to a number (and treat it as a costume index)
-                // Pure whitespace should not be treated as a number
-                // Note: isNaN will cast the string to a number before checking if it's NaN
+            // Try to cast the string to a number (and treat it as a costume index)
+            // Pure whitespace should not be treated as a number
+            // Note: isNaN will cast the string to a number before checking if it's NaN
             } else if (!(isNaN(requestedBackdrop) || Cast.isWhiteSpace(requestedBackdrop))) {
                 stage.setCostume(optZeroIndex ? Number(requestedBackdrop) : Number(requestedBackdrop) - 1);
             }
@@ -555,8 +551,7 @@ class Scratch3LooksBlocks {
     }
 
     changeEffect (args, util) {
-        const effect = Cast.toString(args.EFFECT)
-            .toLowerCase();
+        const effect = Cast.toString(args.EFFECT).toLowerCase();
         const change = Cast.toNumber(args.CHANGE);
         if (!util.target.effects.hasOwnProperty(effect)) return;
         let newValue = change + util.target.effects[effect];
@@ -565,8 +560,7 @@ class Scratch3LooksBlocks {
     }
 
     setEffect (args, util) {
-        const effect = Cast.toString(args.EFFECT)
-            .toLowerCase();
+        const effect = Cast.toString(args.EFFECT).toLowerCase();
         let value = Cast.toNumber(args.VALUE);
         value = this.clampEffect(effect, value);
         util.target.setEffect(effect, value);
