@@ -214,7 +214,7 @@ class RenderedTarget extends Target {
     }
 
     /**
-     * Event which fires when a target changes visually, for updating say bubbles.
+     * Event which fires when a target's visual attribute (f.e. size) changes.
      * @type {string}
      */
     static get EVENT_TARGET_VISUAL_CHANGE () {
@@ -275,7 +275,6 @@ class RenderedTarget extends Target {
 
             this.renderer.updateDrawablePosition(this.drawableID, position);
             if (this.visible) {
-                this.emit(RenderedTarget.EVENT_TARGET_VISUAL_CHANGE, this);
                 this.runtime.requestRedraw();
             }
         } else {
