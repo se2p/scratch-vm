@@ -174,6 +174,7 @@ class Scratch3MotionBlocks {
                 util.target.setXY(util.stackFrame.endX, util.stackFrame.endY);
                 return;
             }
+            util.target.glidingStackFrame = util.stackFrame;
             util.yield();
         }
     }
