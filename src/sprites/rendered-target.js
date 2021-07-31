@@ -161,6 +161,12 @@ class RenderedTarget extends Target {
          * @type {string}
          */
         this.textToSpeechLanguage = null;
+
+        /**
+         * StackFrame used for gliding Blocks.
+         * @type {_StackFrame}
+         */
+        this.glidingStackFrame = null;
     }
 
     /**
@@ -262,8 +268,9 @@ class RenderedTarget extends Target {
      * @param {!number} x New X coordinate, in Scratch coordinates.
      * @param {!number} y New Y coordinate, in Scratch coordinates.
      * @param {?boolean} force Force setting X/Y, in case of dragging
+     * @param {?boolean} updateStackFrame Flag for updating the stackFrame when using glide blocks.
      */
-    setXY (x, y, force) {
+    setXY (x, y, force, updateStackFrame) {
         if (this.isStage) return;
         if (this.dragging && !force) return;
         const oldX = this.x;
@@ -281,6 +288,13 @@ class RenderedTarget extends Target {
             this.x = x;
             this.y = y;
         }
+
+        // Update the glidingStackFrame of the target through Whisker-Tests.
+        if (updateStackFrame) {
+            this.glidingStackFrame.startX = x;
+            this.glidingStackFrame.startY = y;
+        }
+
         this.emit(RenderedTarget.EVENT_TARGET_MOVED, this, oldX, oldY, force);
         this.runtime.requestTargetsUpdate(this);
     }
