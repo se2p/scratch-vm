@@ -290,7 +290,7 @@ class RenderedTarget extends Target {
         }
 
         // Update the glidingStackFrame of the target through Whisker-Tests.
-        if (updateStackFrame) {
+        if (updateStackFrame && this.glidingStackFrame !== null) {
             this.glidingStackFrame.startX = x;
             this.glidingStackFrame.startY = y;
         }
