@@ -785,6 +785,38 @@ class RenderedTarget extends Target {
     }
 
     /**
+     * Return whether touching a vertical stage edge/ a side of the stage.
+     * @return {boolean} True iff the rendered target is touching a stage side.
+     */
+    isTouchingVerticalEdge () {
+        if (this.renderer) {
+            const stageWidth = this.runtime.constructor.STAGE_WIDTH;
+            const bounds = this.getBounds();
+            if (bounds.left < -stageWidth / 2 ||
+                bounds.right > stageWidth / 2) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Return whether touching a horizontal stage edge.
+     * @return {boolean} True iff the rendered target is touching a horizontal stage edge.
+     */
+    isTouchingHorizEdge () {
+        if (this.renderer) {
+            const stageHeight = this.runtime.constructor.STAGE_HEIGHT;
+            const bounds = this.getBounds();
+            if (bounds.top > stageHeight / 2 ||
+                bounds.bottom < -stageHeight / 2) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Return whether touching any of a named sprite's clones.
      * @param {string} spriteName Name of the sprite.
      * @return {boolean} True iff touching a clone of the sprite.
