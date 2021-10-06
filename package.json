@@ -13,6 +13,7 @@
   "browser": "./src/index.js",
   "scripts": {
     "build": "npm run docs && webpack --progress --colors --bail",
+    "build:types": "./emit-type-definitions.sh",
     "coverage": "tap ./test/{unit,integration}/*.js --coverage --coverage-report=lcov",
     "deploy": "touch playground/.nojekyll && gh-pages -t -d playground -m \"Build for $(git log --pretty=format:%H -n1)\"",
     "docs": "jsdoc -c .jsdoc.json",
@@ -83,5 +84,6 @@
     "webpack": "^4.43.0",
     "webpack-cli": "^3.1.0",
     "webpack-dev-server": "^3.10.3"
-  }
+  },
+  "types": "@types/scratch-vm/index.d.ts"
 }
