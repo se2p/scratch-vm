@@ -344,28 +344,20 @@ class Scratch3LooksBlocks {
     }
 
     sayforsecs (args, util) {
-        this.say(args, util);
-        // Convert milliseconds to seconds.
-        const duration = Math.max(0, 1000 * Cast.toNumber(args.SECS));
-        // Save the stepOffset and convert from time to steps.
-        const stepOffset = util.sequencer.runtime.stepsExecuted;
-        const stepDuration = duration / util.sequencer.runtime.currentStepTime;
-        const target = util.target;
-        const usageId = this._getBubbleState(target).usageId;
-        return new Promise(async resolve => {
-            let stepsElapsed = util.sequencer.runtime.stepsExecuted - stepOffset;
-            // Wait until the required amount of steps have been executed.
-            while (stepsElapsed < stepDuration) {
-                stepsElapsed = util.sequencer.runtime.stepsExecuted - stepOffset;
-                // Wait for the next step to happen. Sleep for only 1ms to reduce time drift.
-                await util.sleep(1);
-            }
-            // Clear say bubble if it hasn't been changed and proceed.
-            if (this._getBubbleState(target).usageId === usageId) {
-                this._updateBubble(target, 'say', '');
-            }
-            resolve();
-        });
+        // If we enter for first time, let the sprite start talking and initialize the timer.
+        if (util.stackTimerNeedsInit()) {
+            this.say(args, util);
+            const duration = Math.max(0, 1000 * Cast.toNumber(args.SECS));
+            util.startStackTimer(duration);
+            util.yield();
+            // Else if the sprite is already talking and the assigned talking time has not ran out yet,
+            // let the thread perform a Wait.
+        } else if (!util.stackTimerFinished()) {
+            util.yield();
+            // If the sprite has been talking long enough, remove the bubble.
+        } else if (util.stackTimerFinished()) {
+            this._updateBubble(util.target, 'say', '');
+        }
     }
 
     think (args, util) {
@@ -373,28 +365,20 @@ class Scratch3LooksBlocks {
     }
 
     thinkforsecs (args, util) {
-        this.think(args, util);
-        // Convert milliseconds to seconds.
-        const duration = Math.max(0, 1000 * Cast.toNumber(args.SECS));
-        // Save the stepOffset and convert from time to steps.
-        const stepOffset = util.sequencer.runtime.stepsExecuted;
-        const stepDuration = duration / util.sequencer.runtime.currentStepTime;
-        const target = util.target;
-        const usageId = this._getBubbleState(target).usageId;
-        return new Promise(async resolve => {
-            let stepsElapsed = util.sequencer.runtime.stepsExecuted - stepOffset;
-            // Wait until the required amount of steps have been executed.
-            while (stepsElapsed < stepDuration) {
-                stepsElapsed = util.sequencer.runtime.stepsExecuted - stepOffset;
-                // Wait for the next step to happen. Sleep for only 1ms to reduce time drift.
-                await util.sleep(1);
-            }
-            // Clear think bubble if it hasn't been changed and proceed.
-            if (this._getBubbleState(target).usageId === usageId) {
-                this._updateBubble(target, 'think', '');
-            }
-            resolve();
-        });
+        // If we enter for first time, let the sprite start thinking and start the stackTimer.
+        if (util.stackTimerNeedsInit()) {
+            this.think(args, util);
+            const duration = Math.max(0, 1000 * Cast.toNumber(args.SECS));
+            util.startStackTimer(duration);
+            util.yield();
+            // Else if the sprite is already in deep thoughts and the specified thinkingTime has not ran out yet,
+            // let the thread perform a Wait.
+        } else if (!util.stackTimerFinished()) {
+            util.yield();
+            // If the sprite has been thinking for the specified amount of time, remove the bubble.
+        } else if (util.stackTimerFinished()) {
+            this._updateBubble(util.target, 'think', '');
+        }
     }
 
     show (args, util) {

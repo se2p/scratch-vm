@@ -161,6 +161,12 @@ class RenderedTarget extends Target {
          * @type {string}
          */
         this.textToSpeechLanguage = null;
+
+        /**
+         * StackFrame used for gliding Blocks.
+         * @type {_StackFrame}
+         */
+        this.glidingStackFrame = null;
     }
 
     /**
@@ -214,7 +220,7 @@ class RenderedTarget extends Target {
     }
 
     /**
-     * Event which fires when a target changes visually, for updating say bubbles.
+     * Event which fires when a target's visual attribute (f.e. size) changes.
      * @type {string}
      */
     static get EVENT_TARGET_VISUAL_CHANGE () {
@@ -262,8 +268,9 @@ class RenderedTarget extends Target {
      * @param {!number} x New X coordinate, in Scratch coordinates.
      * @param {!number} y New Y coordinate, in Scratch coordinates.
      * @param {?boolean} force Force setting X/Y, in case of dragging
+     * @param {?boolean} updateStackFrame Flag for updating the stackFrame when using glide blocks.
      */
-    setXY (x, y, force) {
+    setXY (x, y, force, updateStackFrame) {
         if (this.isStage) return;
         if (this.dragging && !force) return;
         const oldX = this.x;
@@ -275,13 +282,19 @@ class RenderedTarget extends Target {
 
             this.renderer.updateDrawablePosition(this.drawableID, position);
             if (this.visible) {
-                this.emit(RenderedTarget.EVENT_TARGET_VISUAL_CHANGE, this);
                 this.runtime.requestRedraw();
             }
         } else {
             this.x = x;
             this.y = y;
         }
+
+        // Update the glidingStackFrame of the target through Whisker-Tests.
+        if (updateStackFrame && this.glidingStackFrame !== null) {
+            this.glidingStackFrame.startX = x;
+            this.glidingStackFrame.startY = y;
+        }
+
         this.emit(RenderedTarget.EVENT_TARGET_MOVED, this, oldX, oldY, force);
         this.runtime.requestTargetsUpdate(this);
     }
@@ -777,6 +790,38 @@ class RenderedTarget extends Target {
             if (bounds.left < -stageWidth / 2 ||
                 bounds.right > stageWidth / 2 ||
                 bounds.top > stageHeight / 2 ||
+                bounds.bottom < -stageHeight / 2) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Return whether touching a vertical stage edge/ a side of the stage.
+     * @return {boolean} True iff the rendered target is touching a stage side.
+     */
+    isTouchingVerticalEdge () {
+        if (this.renderer) {
+            const stageWidth = this.runtime.constructor.STAGE_WIDTH;
+            const bounds = this.getBounds();
+            if (bounds.left < -stageWidth / 2 ||
+                bounds.right > stageWidth / 2) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Return whether touching a horizontal stage edge.
+     * @return {boolean} True iff the rendered target is touching a horizontal stage edge.
+     */
+    isTouchingHorizEdge () {
+        if (this.renderer) {
+            const stageHeight = this.runtime.constructor.STAGE_HEIGHT;
+            const bounds = this.getBounds();
+            if (bounds.top > stageHeight / 2 ||
                 bounds.bottom < -stageHeight / 2) {
                 return true;
             }
