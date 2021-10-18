@@ -514,7 +514,7 @@ class Scratch3LooksBlocks {
                     args.BACKDROP
                 )
             );
-            if (util.stackFrame.startedThreads.length === 0) {
+            if (!util.stackFrame.startedThreads || util.stackFrame.startedThreads.length === 0) {
                 // Nothing was started.
                 return;
             }
