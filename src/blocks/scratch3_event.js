@@ -104,7 +104,7 @@ class Scratch3EventBlocks {
                         BROADCAST_OPTION: broadcastOption
                     }
                 );
-                if (util.stackFrame.startedThreads.length === 0) {
+                if (!util.stackFrame.startedThreads || util.stackFrame.startedThreads.length === 0) {
                     // Nothing was started.
                     return;
                 }
