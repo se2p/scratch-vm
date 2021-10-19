@@ -406,6 +406,13 @@ class Runtime extends EventEmitter {
          * @type {function}
          */
         this.removeCloudVariable = this._initializeRemoveCloudVariable(newCloudDataManager);
+
+        /**
+         * Virtual sound used by Whisker's soundEvents. A value of -1 indicates that no SoundEvent was sent to the
+         * Scratch-VM. In those cases the VM falls back to its default behaviour and checks for a microphone.
+         * @type {number} the volume
+         */
+        this._virtualSound = -1;
     }
 
     /**

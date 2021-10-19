@@ -73,6 +73,10 @@ class Scratch3EventBlocks {
         case 'timer':
             return util.ioQuery('clock', 'projectTimer') > value;
         case 'loudness':
+            // Check if Whisker has sent a SoundEvent.
+            if (this.runtime.virtualSound > 0) {
+                return this.runtime.virtualSound > value;
+            }
             return this.runtime.audioEngine && this.runtime.audioEngine.getLoudness() > value;
         }
         return false;
