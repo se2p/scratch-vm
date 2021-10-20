@@ -269,8 +269,17 @@ class Scratch3SensingBlocks {
             return this._cachedLoudness;
         }
 
+        // Check if Whisker has sent a SoundEvent, if yes use the virtualSound value of Whisker
+        // instead of the microphone.
+        let loudness;
+        if (this.runtime.virtualSound > 0) {
+            loudness = this.runtime.virtualSound;
+        } else {
+            loudness = this.runtime.audioEngine.getLoudness();
+        }
+
         this._cachedLoudnessTimestamp = this._timer.time();
-        this._cachedLoudness = this.runtime.audioEngine.getLoudness();
+        this._cachedLoudness = loudness;
         return this._cachedLoudness;
     }
 
