@@ -22,6 +22,7 @@ class Trace {
         delete this.argValues.mutation;
         this.fields = block.fields;
         this.distances = [...block._distances];
+        this.remainingScaledHaltingDuration = block.utility.getScaledRemainingHaltingTime();
 
         this.updateTargets(targets);
     }
@@ -89,7 +90,8 @@ class Tracer {
      */
     _filterBlock (block) {
 
-        if (!block._distances || block._distances.length === 0 || !block._distances[0]) {
+        const isTimeDependentBlock = block.utility.stackFrame.duration !== null;
+        if (!isTimeDependentBlock && (!block._distances || block._distances.length === 0 || !block._distances[0])) {
             return false;
         }
 
@@ -126,7 +128,7 @@ class Tracer {
         if (!this._filterBlock(block)) {
             return;
         }
-        let newTrace = new Trace(block, this.targets);
+        const newTrace = new Trace(block, this.targets);
 
         if (block.id in this.traces) {
             const oldTrace = this.traces[block.id];

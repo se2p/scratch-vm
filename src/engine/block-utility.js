@@ -104,13 +104,19 @@ class BlockUtility {
     }
 
     /**
-     * Let threads sleep for the specified amount of milliseconds.
-     * This can be used to let the stepper step through active threads.
-     * @param {number} duration the sleep duration in milliseconds
-     * @return {Promise<void>} returns an empty promise
+     * Calculates and scales the remaining steps until a thread yielding state will be over.
+     * @returns {null|number} the scaled remaining halting time in the range [0,1].
      */
-    async sleep (duration) {
-        return new Promise(resolve => setTimeout(resolve, duration));
+    getScaledRemainingHaltingTime () {
+        if (this.stackFrame.duration) {
+            const stepsElapsed = this.runtime.stepsExecuted - this.stackFrame.stepOffset;
+            const scaledHaltingDuration = 1 - (stepsElapsed / this.stackFrame.duration);
+            if (scaledHaltingDuration < 0) {
+                return 0;
+            }
+            return scaledHaltingDuration;
+        }
+        return null;
     }
 
     /**
