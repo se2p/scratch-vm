@@ -130,7 +130,7 @@ class Tracer {
         }
         const newTrace = new Trace(block, this.targets);
 
-        if (block.id in this.traces) {
+        if (block.id in this.traces && newTrace.distances[0]) {
             const oldTrace = this.traces[block.id];
             const oldTrue = oldTrace.distances[0][0];
             const oldFalse = oldTrace.distances[0][1];
