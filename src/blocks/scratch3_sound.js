@@ -172,6 +172,23 @@ class Scratch3SoundBlocks {
         }
     }
 
+    _playSound (args, util, storeWaiting) {
+        const index = this._getSoundIndex(args.SOUND_MENU, util);
+        if (index >= 0) {
+            const {target} = util;
+            const {sprite} = target;
+            const {soundId} = sprite.sounds[index];
+            if (sprite.soundBank) {
+                if (storeWaiting === STORE_WAITING) {
+                    this._addWaitingSound(target.id, soundId);
+                } else {
+                    this._removeWaitingSound(target.id, soundId);
+                }
+                return sprite.soundBank.playSound(target, soundId);
+            }
+        }
+    }
+
     _addWaitingSound (targetId, soundId) {
         if (!this.waitingSounds[targetId]) {
             this.waitingSounds[targetId] = new Set();
