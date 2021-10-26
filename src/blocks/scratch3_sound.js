@@ -166,6 +166,7 @@ class Scratch3SoundBlocks {
             const soundDuration = sprite.soundBank.soundPlayers[soundId].buffer.duration;
             const duration = Math.max(0, 1000 * Cast.toNumber(soundDuration));
             util.startStackTimer(duration);
+            sprite.soundBank.playSound(target, soundId);
             util.yield();
         } else if (!util.stackTimerFinished()) {
             util.yield();
