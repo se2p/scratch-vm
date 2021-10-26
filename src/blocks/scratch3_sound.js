@@ -158,23 +158,17 @@ class Scratch3SoundBlocks {
     }
 
     playSoundAndWait (args, util) {
-        return this._playSound(args, util, STORE_WAITING);
-    }
-
-    _playSound (args, util, storeWaiting) {
         const index = this._getSoundIndex(args.SOUND_MENU, util);
-        if (index >= 0) {
+        if (index >= 0 && util.stackTimerNeedsInit()) {
             const {target} = util;
             const {sprite} = target;
             const {soundId} = sprite.sounds[index];
-            if (sprite.soundBank) {
-                if (storeWaiting === STORE_WAITING) {
-                    this._addWaitingSound(target.id, soundId);
-                } else {
-                    this._removeWaitingSound(target.id, soundId);
-                }
-                return sprite.soundBank.playSound(target, soundId);
-            }
+            const soundDuration = sprite.soundBank.soundPlayers[soundId].buffer.duration;
+            const duration = Math.max(0, 1000 * Cast.toNumber(soundDuration));
+            util.startStackTimer(duration);
+            util.yield();
+        } else if (!util.stackTimerFinished()) {
+            util.yield();
         }
     }
 
