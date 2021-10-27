@@ -79,6 +79,8 @@ class Tracer {
         this.coverage = new Set();
         this.targets = [];
         this.lastTraced = null;
+        this.timeDependentBlocks = ['control_wait', 'looks_thinkforsecs', 'looks_sayforsecs', 'motion_glidesecstoxy',
+            'sound_playuntildone'];
     }
 
     /**
@@ -90,8 +92,8 @@ class Tracer {
      */
     _filterBlock (block) {
 
-        const isTimeDependentBlock = block.utility.stackFrame.duration !== null;
-        if (!isTimeDependentBlock && (!block._distances || block._distances.length === 0 || !block._distances[0])) {
+        if ((!this.timeDependentBlocks.includes(block.opcode)) &&
+            (!block._distances || block._distances.length === 0 || !block._distances[0])) {
             return false;
         }
 
