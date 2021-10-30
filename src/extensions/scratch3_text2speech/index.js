@@ -682,12 +682,31 @@ class Scratch3Text2SpeechBlocks {
     }
 
     /**
+     * Proxy method for text2speech blocks which initialises a stackFrame. The stackFrame is used for tracking the
+     * time passed since encountering this block for the first time. With that information we can calculate the scaled
+     * remaining halting duration used for the CFG-Distance in Whisker.
+     * @param  {object} args Block arguments.
+     * @param {object} util Utility object provided by the runtime.
+     */
+    speakAndWait (args, util) {
+        if (util.stackTimerNeedsInit()) {
+            this.convertTextToSoundAndPlay(args, util)
+                .then(() => {
+                    this.runtime.requestRedraw();
+                    util.yield();
+                });
+        } else if (!util.stackTimerFinished()) {
+            util.yield();
+        }
+    }
+
+    /**
      * Convert the provided text into a sound file and then play the file.
      * @param  {object} args Block arguments
      * @param {object} util Utility object provided by the runtime.
-     * @return {Promise} A promise that resolves after playing the sound
+     * @return {Promise} A promise that resolves after starting the sound
      */
-    speakAndWait (args, util) {
+    convertTextToSoundAndPlay (args, util) {
         // Cast input to string
         let words = Cast.toString(args.WORDS);
         let locale = this._getSpeechSynthLocale();
@@ -743,23 +762,22 @@ class Scratch3Text2SpeechBlocks {
                         buffer: body.buffer
                     }
                 };
-                this.runtime.audioEngine.decodeSoundPlayer(sound).then(soundPlayer => {
-                    this._soundPlayers.set(soundPlayer.id, soundPlayer);
+                this.runtime.audioEngine.decodeSoundPlayer(sound)
+                    .then(soundPlayer => {
+                        this._soundPlayers.set(soundPlayer.id, soundPlayer);
 
-                    soundPlayer.setPlaybackRate(playbackRate);
+                        soundPlayer.setPlaybackRate(playbackRate);
 
-                    // Increase the volume
-                    const engine = this.runtime.audioEngine;
-                    const chain = engine.createEffectChain();
-                    chain.set('volume', SPEECH_VOLUME);
-                    soundPlayer.connect(chain);
-
-                    soundPlayer.play();
-                    soundPlayer.on('stop', () => {
-                        this._soundPlayers.delete(soundPlayer.id);
-                        resolve();
+                        // Increase the volume
+                        const engine = this.runtime.audioEngine;
+                        const chain = engine.createEffectChain();
+                        chain.set('volume', SPEECH_VOLUME);
+                        soundPlayer.connect(chain);
+                        const duration = Math.max(0, 1000 * Cast.toNumber(soundPlayer.buffer.duration));
+                        util.startStackTimer(duration);
+                        soundPlayer.play();
+                        resolve(duration);
                     });
-                });
             });
         });
     }

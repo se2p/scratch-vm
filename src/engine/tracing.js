@@ -80,7 +80,7 @@ class Tracer {
         this.targets = [];
         this.lastTraced = null;
         this.timeDependentBlocks = ['control_wait', 'looks_thinkforsecs', 'looks_sayforsecs', 'motion_glidesecstoxy',
-            'sound_playuntildone'];
+            'sound_playuntildone', 'text2speech_speakAndWait'];
     }
 
     /**
