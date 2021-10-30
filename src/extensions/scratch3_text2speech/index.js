@@ -690,11 +690,9 @@ class Scratch3Text2SpeechBlocks {
      */
     speakAndWait (args, util) {
         if (util.stackTimerNeedsInit()) {
-            this.convertTextToSoundAndPlay(args, util)
-                .then(() => {
-                    this.runtime.requestRedraw();
-                    util.yield();
-                });
+            this.convertTextToSoundAndPlay(args, util);
+            this.runtime.requestRedraw();
+            util.yield();
         } else if (!util.stackTimerFinished()) {
             util.yield();
         }
@@ -764,16 +762,18 @@ class Scratch3Text2SpeechBlocks {
                 };
                 this.runtime.audioEngine.decodeSoundPlayer(sound)
                     .then(soundPlayer => {
+                        const accelerationFactor = this.runtime.acceleration;
                         this._soundPlayers.set(soundPlayer.id, soundPlayer);
 
-                        soundPlayer.setPlaybackRate(playbackRate);
+                        soundPlayer.setPlaybackRate(playbackRate * accelerationFactor);
 
                         // Increase the volume
                         const engine = this.runtime.audioEngine;
                         const chain = engine.createEffectChain();
                         chain.set('volume', SPEECH_VOLUME);
                         soundPlayer.connect(chain);
-                        const duration = Math.max(0, 1000 * Cast.toNumber(soundPlayer.buffer.duration));
+                        const duration = Math.max(0,
+                            1000 * Cast.toNumber(soundPlayer.buffer.duration) / accelerationFactor);
                         util.startStackTimer(duration);
                         soundPlayer.play();
                         resolve(duration);
