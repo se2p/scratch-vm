@@ -61,6 +61,14 @@ class BlockUtility {
      */
     get stackFrame () {
         const frame = this.thread.peekStackFrame();
+
+        // When using an accelerationFactor and having text2speech blocks it may happen sometimes that we query
+        // the stackFrame before its creation since the answer from the server responsible for transforming the
+        // text file has not arrived yet.
+        if (frame === null){
+            return null;
+        }
+
         if (frame.executionContext === null) {
             frame.executionContext = {};
         }
@@ -74,10 +82,8 @@ class BlockUtility {
      */
     stackTimerFinished () {
         const stepsElapsed = this.sequencer.runtime.stepsExecuted - this.stackFrame.stepOffset;
-        if (stepsElapsed < this.stackFrame.duration) {
-            return false;
-        }
-        return true;
+        return stepsElapsed >= this.stackFrame.duration;
+
     }
 
     /**
@@ -93,6 +99,12 @@ class BlockUtility {
      * @param {number} duration - a duration in milliseconds to set the timer for.
      */
     startStackTimer (duration) {
+        // When using an accelerationFactor and having text2speech blocks it may happen sometimes that we query
+        // the stackFrame before its creation since the answer from the server responsible for transforming the
+        // text file has not arrived yet.
+        if (this.stackFrame === null){
+            return;
+        }
         if (this.nowObj) {
             this.stackFrame.timer = new Timer(this.nowObj);
         } else {
