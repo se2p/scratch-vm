@@ -712,7 +712,7 @@ class Scratch3Text2SpeechBlocks {
             util.yield();
         }
 
-        // The stackTimer has not been started yet but we have a translated sound fitting the correspongin text.
+        // The stackTimer has not been started yet but we have a translated sound fitting the corresponding text.
         else if (util.stackTimerNeedsInit() && this._text2speechCache.has(args.WORDS)) {
             this._responsePending = false;
             const soundPlayer = this._text2speechCache.get(args.WORDS);
