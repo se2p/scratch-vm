@@ -136,6 +136,18 @@ class Scratch3Text2SpeechBlocks {
          * @type {Array}
          */
         this._supportedLocales = this._getSupportedLocales();
+
+        /**
+         * Flag indicating if we have already sent a request for a text2speech translation to the server.
+         * @type {boolean}
+         */
+        this._responsePending = false;
+
+        /**
+         * Caches translated text strings within the SoundPlayer.
+         * @type {Map<string, SoundPlayer>}
+         */
+        this._text2speechCache = new Map();
     }
 
     /**
@@ -682,12 +694,57 @@ class Scratch3Text2SpeechBlocks {
     }
 
     /**
-     * Convert the provided text into a sound file and then play the file.
-     * @param  {object} args Block arguments
+     * Functionality for text2speech blocks. When encountering a text2speech block for the first time, we check if we
+     * have already translated the corresponding text into a sound file by a table look up.
+     * If we have already translated the text once we gather the corresponding sound file from a cache,
+     * play it and start the StackTimer which keeps track when the block has to be exited,
+     * incorporating Whisker's acceleration factor. In case we have not a sound file present for a given text,
+     * we first translate it by sending a request to a server.
+     * @param  {object} args Block arguments.
      * @param {object} util Utility object provided by the runtime.
-     * @return {Promise} A promise that resolves after playing the sound
      */
     speakAndWait (args, util) {
+
+        // We encountered an unseen text and therefore send a translation request to the server.
+        if (!this._text2speechCache.has(args.WORDS) && !this._responsePending) {
+            this._responsePending = true;
+            this.convertTextToSoundAndPlay(args, util);
+            util.yield();
+        }
+
+        // The stackTimer has not been started yet but we have a translated sound fitting the corresponding text.
+        else if (util.stackTimerNeedsInit() && this._text2speechCache.has(args.WORDS)) {
+            this._responsePending = false;
+            const soundPlayer = this._text2speechCache.get(args.WORDS);
+
+            // Increase the volume
+            const engine = this.runtime.audioEngine;
+            const chain = engine.createEffectChain();
+            chain.set('volume', SPEECH_VOLUME);
+            soundPlayer.connect(chain);
+            const accelerationFactor = this.runtime.accelerationFactor;
+            const duration = Math.max(0,
+                1000 * Cast.toNumber(soundPlayer.buffer.duration) / accelerationFactor);
+            this.duration = duration;
+            soundPlayer.play();
+            util.startStackTimer(duration);
+            util.yield();
+        }
+
+        // The Timer has been started and the sound is still running.
+        else if (!util.stackTimerFinished()) {
+            util.yield();
+        }
+    }
+
+    /**
+     * Convert the provided text into a sound file and save it in a cache to avoid having to translate the same text
+     * again and again.
+     * @param  {object} args Block arguments.
+     * @param {object} util Utility object provided by the runtime.
+     * @return {Promise} A promise that resolves after having translated the given text.
+     */
+    convertTextToSoundAndPlay (args, util) {
         // Cast input to string
         let words = Cast.toString(args.WORDS);
         let locale = this._getSpeechSynthLocale();
@@ -743,23 +800,14 @@ class Scratch3Text2SpeechBlocks {
                         buffer: body.buffer
                     }
                 };
-                this.runtime.audioEngine.decodeSoundPlayer(sound).then(soundPlayer => {
-                    this._soundPlayers.set(soundPlayer.id, soundPlayer);
-
-                    soundPlayer.setPlaybackRate(playbackRate);
-
-                    // Increase the volume
-                    const engine = this.runtime.audioEngine;
-                    const chain = engine.createEffectChain();
-                    chain.set('volume', SPEECH_VOLUME);
-                    soundPlayer.connect(chain);
-
-                    soundPlayer.play();
-                    soundPlayer.on('stop', () => {
-                        this._soundPlayers.delete(soundPlayer.id);
+                this.runtime.audioEngine.decodeSoundPlayer(sound)
+                    .then(soundPlayer => {
+                        // Cache the translated soundfile within the soundPlayer.
+                        soundPlayer.setPlaybackRate(playbackRate);
+                        this._soundPlayers.set(soundPlayer.id, soundPlayer);
+                        this._text2speechCache.set(args.WORDS, soundPlayer);
                         resolve();
                     });
-                });
             });
         });
     }
