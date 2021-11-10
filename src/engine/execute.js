@@ -286,6 +286,12 @@ class BlockCached {
         this._parentNegated = false;
 
         /**
+         * Stores the BlockUtility Object used for calculating the remaining steps for execution halting blocks.
+         * @type {BlockUtility}
+         */
+        this.utility = blockUtility;
+
+        /**
          * A sequence of non-shadow operations that can must be performed. This
          * list recreates the order this block and its children are executed.
          * Since the order is always the same we can safely store that order

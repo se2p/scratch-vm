@@ -22,6 +22,7 @@ class Trace {
         delete this.argValues.mutation;
         this.fields = block.fields;
         this.distances = [...block._distances];
+        this.remainingScaledHaltingDuration = block.utility.getScaledRemainingHaltingTime();
 
         this.updateTargets(targets);
     }
@@ -78,6 +79,8 @@ class Tracer {
         this.coverage = new Set();
         this.targets = [];
         this.lastTraced = null;
+        this.timeDependentBlocks = ['control_wait', 'looks_thinkforsecs', 'looks_sayforsecs', 'motion_glidesecstoxy',
+            'sound_playuntildone', 'text2speech_speakAndWait'];
     }
 
     /**
@@ -89,7 +92,8 @@ class Tracer {
      */
     _filterBlock (block) {
 
-        if (!block._distances || block._distances.length === 0 || !block._distances[0]) {
+        if ((!this.timeDependentBlocks.includes(block.opcode)) &&
+            (!block._distances || block._distances.length === 0 || !block._distances[0])) {
             return false;
         }
 
@@ -126,9 +130,9 @@ class Tracer {
         if (!this._filterBlock(block)) {
             return;
         }
-        let newTrace = new Trace(block, this.targets);
+        const newTrace = new Trace(block, this.targets);
 
-        if (block.id in this.traces) {
+        if (block.id in this.traces && newTrace.distances[0]) {
             const oldTrace = this.traces[block.id];
             const oldTrue = oldTrace.distances[0][0];
             const oldFalse = oldTrace.distances[0][1];

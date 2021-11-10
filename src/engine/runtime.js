@@ -413,6 +413,12 @@ class Runtime extends EventEmitter {
          * @type {number} the volume
          */
         this._virtualSound = -1;
+
+        /**
+         * The acceleration factor which can be set by Whisker to accelerate program execution.
+         * @type {number}
+         */
+        this.accelerationFactor = 1;
     }
 
     /**
