@@ -79,7 +79,7 @@ declare class Scratch3SoundBlocks {
         };
     };
     playSound(args: any, util: any): void;
-    playSoundAndWait(args: any, util: any): any;
+    playSoundAndWait(args: any, util: any): void;
     _playSound(args: any, util: any, storeWaiting: any): any;
     _addWaitingSound(targetId: any, soundId: any): void;
     _removeWaitingSound(targetId: any, soundId: any): void;

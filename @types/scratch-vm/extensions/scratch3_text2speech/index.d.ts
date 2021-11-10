@@ -43,6 +43,16 @@ declare class Scratch3Text2SpeechBlocks {
      */
     _supportedLocales: any[];
     /**
+     * Flag indicating if we have already sent a request for a text2speech translation to the server.
+     * @type {boolean}
+     */
+    _responsePending: boolean;
+    /**
+     * Caches translated text strings within the SoundPlayer.
+     * @type {Map<string, SoundPlayer>}
+     */
+    _text2speechCache: Map<string, any>;
+    /**
      * An object with info for each voice.
      */
     get VOICE_INFO(): {
@@ -300,10 +310,23 @@ declare class Scratch3Text2SpeechBlocks {
      */
     setLanguage(args: object): void;
     /**
-     * Convert the provided text into a sound file and then play the file.
-     * @param  {object} args Block arguments
+     * Functionality for text2speech blocks. When encountering a text2speech block for the first time, we check if we
+     * have already translated the corresponding text into a sound file by a table look up.
+     * If we have already translated the text once we gather the corresponding sound file from a cache,
+     * play it and start the StackTimer which keeps track when the block has to be exited,
+     * incorporating Whisker's acceleration factor. In case we have not a sound file present for a given text,
+     * we first translate it by sending a request to a server.
+     * @param  {object} args Block arguments.
      * @param {object} util Utility object provided by the runtime.
-     * @return {Promise} A promise that resolves after playing the sound
      */
-    speakAndWait(args: object, util: object): Promise<any>;
+    speakAndWait(args: object, util: object): void;
+    duration: number;
+    /**
+     * Convert the provided text into a sound file and save it in a cache to avoid having to translate the same text
+     * again and again.
+     * @param  {object} args Block arguments.
+     * @param {object} util Utility object provided by the runtime.
+     * @return {Promise} A promise that resolves after having translated the given text.
+     */
+    convertTextToSoundAndPlay(args: object, util: object): Promise<any>;
 }

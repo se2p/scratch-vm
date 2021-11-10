@@ -408,6 +408,17 @@ declare class Runtime extends EventEmitter {
      * @type {function}
      */
     removeCloudVariable: Function;
+    /**
+     * Virtual sound used by Whisker's soundEvents. A value of -1 indicates that no SoundEvent was sent to the
+     * Scratch-VM. In those cases the VM falls back to its default behaviour and checks for a microphone.
+     * @type {number} the volume
+     */
+    _virtualSound: number;
+    /**
+     * The acceleration factor which can be set by Whisker to accelerate program execution.
+     * @type {number}
+     */
+    accelerationFactor: number;
     _initializeAddCloudVariable(newCloudDataManager: any): () => void;
     _initializeRemoveCloudVariable(newCloudDataManager: any): () => void;
     /**

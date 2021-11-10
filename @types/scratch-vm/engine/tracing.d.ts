@@ -6,6 +6,7 @@ export class Tracer {
     coverage: Set<any>;
     targets: any[];
     lastTraced: Trace;
+    timeDependentBlocks: string[];
     /**
      * Configure the rules which decide whether a given block should be stored or not.
      * These rules can be built on all recorded block records.
@@ -57,6 +58,7 @@ export class Trace {
     argValues: any;
     fields: any;
     distances: any[];
+    remainingScaledHaltingDuration: any;
     ti(targetId: any): any;
     updateTargets(targets: any): void;
     targetsInfo: {};

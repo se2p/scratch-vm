@@ -58,12 +58,10 @@ declare class BlockUtility {
      */
     startStackTimer(duration: number): void;
     /**
-     * Let threads sleep for the specified amount of milliseconds.
-     * This can be used to let the stepper step through active threads.
-     * @param {number} duration the sleep duration in milliseconds
-     * @return {Promise<void>} returns an empty promise
+     * Calculates and scales the remaining steps until a thread yielding state will be over.
+     * @returns {null|number} the scaled remaining halting time in the range [0,1].
      */
-    sleep(duration: number): Promise<void>;
+    getScaledRemainingHaltingTime(): null | number;
     /**
      * Set the thread to yield.
      */
