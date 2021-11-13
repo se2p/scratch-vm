@@ -675,9 +675,14 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
     }
 
     if (shortname === 'repeat') {
-        // Get loop counter
-        // TODO: Can this cast fail, e.g. if there is something other than a number as parameter?
-        const times = Math.round(cast.toNumber(argValues.TIMES));
+        // Get total number of iterations as fallback
+        let times = Math.round(cast.toNumber(argValues.TIMES));
+        if (blockUtility.thread.stackFrames.length > 0 &&
+            blockUtility.thread.stackFrames[0].executionContext !== undefined &&
+            blockUtility.thread.stackFrames[0].executionContext.loopCounter !== undefined) {
+            // Determine how many iterations are left
+            times = blockUtility.thread.stackFrames[0].executionContext.loopCounter;
+        }
         if (times > 0) {
             return [0, times];
         } else {
