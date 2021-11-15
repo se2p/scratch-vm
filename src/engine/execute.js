@@ -678,8 +678,8 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         // Get total number of iterations as fallback
         let times = Math.round(cast.toNumber(argValues.TIMES));
         if (blockUtility.thread.stackFrames.length > 0 &&
-            blockUtility.thread.stackFrames[0].executionContext !== undefined &&
-            blockUtility.thread.stackFrames[0].executionContext.loopCounter !== undefined) {
+            blockUtility.thread.stackFrames[0].executionContext &&
+            blockUtility.thread.stackFrames[0].executionContext.loopCounter) {
             // Determine how many iterations are left
             times = blockUtility.thread.stackFrames[0].executionContext.loopCounter;
         }
