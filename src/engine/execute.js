@@ -771,6 +771,16 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         return [stageDiameter, 0];
     }
 
+    if (shortname === 'colorTouchingColor') {
+        const touching = sensing.getPrimitives().sensing_coloristouchingcolor;
+        const colorTouchingColor = touching.bind(sensing);
+        if (colorTouchingColor(argValues, blockUtility)) {
+            return [0, 1];
+        } else {
+            return [1, 0];
+        }
+    }
+
 
     if (shortname === 'touchingObject') {
         dist_args = {};
