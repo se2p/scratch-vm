@@ -706,22 +706,21 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         }
     }
 
-    if (shortname === 'touchingColor') {
-        const touching = sensing.getPrimitives().sensing_touchingcolor;
-        const touchingColor = touching.bind(sensing);
+    const colorMatches = (a, b) => (
+        (a[0] & 0b11111000) === (b[0] & 0b11111000) &&
+        (a[1] & 0b11111000) === (b[1] & 0b11111000) &&
+        (a[2] & 0b11110000) === (b[2] & 0b11110000)
+    );
 
-        if (touchingColor(argValues, blockUtility)) {
+    const handleTouchingColor = function (args, tgt) {
+        const touchingColor = sensing.getPrimitives().sensing_touchingcolor.bind(sensing);
+
+        if (touchingColor(args, blockUtility)) {
             return [0, 1];
         }
 
-        const colorMatches = (a, b, offset) => (
-            (a[0] & 0b11111000) === (b[offset + 0] & 0b11111000) &&
-            (a[1] & 0b11111000) === (b[offset + 1] & 0b11111000) &&
-            (a[2] & 0b11110000) === (b[offset + 2] & 0b11110000)
-        );
-
-        const renderer = threadTarget.renderer;
-        const color3b = cast.toRgbColorList(argValues.COLOR);
+        const renderer = tgt.renderer;
+        const color3b = cast.toRgbColorList(args.COLOR);
         const stageDiameter = Math.sqrt(
             Math.pow((renderer._xRight - renderer._xLeft), 2) +
             Math.pow((renderer._yTop - renderer._yBottom), 2)
@@ -731,7 +730,7 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         const touchables = [];
         for (let index = renderer._visibleDrawList.length - 1; index >= 0; index--){
             const id = renderer._visibleDrawList[index];
-            if (id !== threadTarget.drawableID) {
+            if (id !== tgt.drawableID) {
                 const drawable = renderer._allDrawables[id];
                 touchables.push({
                     id,
@@ -753,34 +752,96 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
                     coordinates.push([x, y]);
                 }
             }
-            for (const c of coordinates) {
-                const x = c[0];
-                const y = c[1];
-                point[0] = threadTarget.x + x;
-                point[1] = threadTarget.y + y;
+            for (const [x, y] of coordinates) {
+                point[0] = tgt.x + x;
+                point[1] = tgt.y + y;
                 renderer.constructor.sampleColor3b(point, touchables, color);
-                if (colorMatches(color, color3b, 0)) {
-                    return [Math.sqrt(
-                        Math.pow(x, 2) +
-                        Math.pow(y, 2)
-                    ), 0];
+                if (colorMatches(color, color3b)) {
+                    return [Math.hypot(x, y), 0];
                 }
             }
             [rPrev, r] = [r, r + rPrev];
         }
         return [stageDiameter, 0];
+    };
+
+    if (shortname === 'touchingColor') {
+        return handleTouchingColor(argValues, threadTarget);
     }
 
     if (shortname === 'colorTouchingColor') {
-        const touching = sensing.getPrimitives().sensing_coloristouchingcolor;
-        const colorTouchingColor = touching.bind(sensing);
+        const colorTouchingColor = sensing.getPrimitives().sensing_coloristouchingcolor.bind(sensing);
+
         if (colorTouchingColor(argValues, blockUtility)) {
             return [0, 1];
-        } else {
-            return [1, 0];
         }
-    }
 
+        const color1 = argValues.COLOR;
+        const color2 = argValues.COLOR2;
+
+        const fuzzyContainsColor = function (COLOR) {
+            const color3b = cast.toRgbColorList(COLOR);
+            const renderer = threadTarget.renderer;
+
+            const center = {x: threadTarget.x, y: threadTarget.y};
+            const radius = threadTarget.size / 2;
+
+            const color = new Uint8ClampedArray(4);
+
+            let r = 1;
+            let rPrev = r;
+
+            while (r < radius) {
+                const coordinates = [];
+                for (const x of [-r, r]) {
+                    for (let y = -r; y <= r; y++) {
+                        coordinates.push([center.x + x, center.y + y]);
+                    }
+                }
+                for (const y of [-r, r]) {
+                    for (let x = -r; x <= r; x++) {
+                        coordinates.push([center.x + x, center.y + y]);
+                    }
+                }
+                for (const [x, y] of coordinates) {
+                    const point = twgl.v3.create(x, y);
+                    const id = threadTarget.drawableId;
+                    const drawable = renderer._allDrawables[id];
+                    const self = {id, drawable};
+                    renderer.constructor.sampleColor3b(point, self, color);
+                    if (colorMatches(color, color3b)) {
+                        return true;
+                    }
+                }
+                [rPrev, r] = [r, r + rPrev];
+            }
+
+            return false;
+        };
+
+        const containsColor1 = fuzzyContainsColor(color1);
+        const containsColor2 = fuzzyContainsColor(color2);
+
+        if (!containsColor1 && !containsColor2) {
+            const renderer = threadTarget.renderer;
+            const stageWidth = renderer._xRight - renderer._xLeft;
+            const stageHeight = renderer._yTop - renderer._yBottom;
+            const stageDiameter = Math.hypot(stageWidth, stageHeight);
+            return [stageDiameter, 0];
+        }
+
+        if (containsColor1 && !containsColor2) {
+            return handleTouchingColor(color2, threadTarget);
+        }
+
+        if (containsColor2 && !containsColor1) {
+            return handleTouchingColor(color1, threadTarget);
+        }
+
+        const [trueDist1] = handleTouchingColor(color1, threadTarget);
+        const [trueDist2] = handleTouchingColor(color2, threadTarget);
+        return [Math.min(trueDist1, trueDist2), 0];
+    }
 
     if (shortname === 'touchingObject') {
         dist_args = {};
@@ -793,7 +854,7 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         }
 
         if (argValues.TOUCHINGOBJECTMENU === '_edge_') {
-            let minEdgeDist = Math.min(...[240 + threadTarget.x, 180 + threadTarget.y, 240 - threadTarget.x, 180 - threadTarget.y]);
+            const minEdgeDist = Math.min(...[240 + threadTarget.x, 180 + threadTarget.y, 240 - threadTarget.x, 180 - threadTarget.y]);
             if (minEdgeDist === 0) {
                 return [0, 1];
             } else {
