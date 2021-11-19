@@ -712,9 +712,17 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         (a[2] & 0b11110000) === (b[2] & 0b11110000)
     );
 
-    const fibs = function* (current = 1, next = 2) {
-        yield current;
-        yield* fibs(next, current + next);
+    const fibs = function (bound, current = 1, number = 2) {
+        const f = function* (c, n) {
+            if (c > bound) {
+                return c;
+            }
+
+            yield c;
+            yield* f(n, c + n);
+        };
+
+        return f(current, number);
     };
 
     const range = function (from, to) {
@@ -726,9 +734,7 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
     };
 
     const fuzzyFindDistanceToColor = function (centerX, centerY, searchRadius, touchables, color) {
-        const radius = fibs();
-
-        for (let r = radius.next(); r < searchRadius; r = radius.next()) {
+        for (const r of fibs(searchRadius)) {
             const coordinates = [];
 
             for (const y of [centerY - r, centerY + r]) {
