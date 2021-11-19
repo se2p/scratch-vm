@@ -805,12 +805,15 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         const color1 = argValues.COLOR;
         const color2 = argValues.COLOR2;
 
-        const radius = threadTarget.size / 2;
+        const [costumeSizeX, costumeSizeY] = threadTarget.sprite.costumes[threadTarget.currentCostume];
+        const scalingFactor = threadTarget.size / 100;
+        const searchRadius = Math.max(costumeSizeX, costumeSizeY) * scalingFactor / 2;
+
         const id = threadTarget.drawableID;
         const drawable = threadTarget.renderer._allDrawables[id];
         const self = [{id, drawable}];
 
-        const result = fuzzyFindColor(radius, self, color1);
+        const result = fuzzyFindColor(searchRadius, self, color1);
 
         if (!result.colorFound) {
             return [1, 0];
