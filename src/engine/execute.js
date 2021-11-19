@@ -712,61 +712,89 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         (a[2] & 0b11110000) === (b[2] & 0b11110000)
     );
 
-    const handleTouchingColor = function (args, tgt) {
-        const touchingColor = sensing.getPrimitives().sensing_touchingcolor.bind(sensing);
+    const fibs = function* (current = 1, next = 2) {
+        yield current;
+        yield* fibs(next, current + next);
+    };
 
-        if (touchingColor(args, blockUtility)) {
-            return [0, 1];
+    const range = function (from, to) {
+        const values = [];
+        for (let i = from; i <= to; i++) {
+            values.push(i);
+        }
+        return values;
+    };
+
+    const fuzzyFindDistanceToColor = function (centerX, centerY, searchRadius, touchables, color) {
+        const radius = fibs();
+
+        for (let r = radius.next(); r < searchRadius; r = radius.next()) {
+            const coordinates = [];
+
+            for (const y of [centerY - r, centerY + r]) {
+                for (const x of range(centerX - r, centerX + r)) {
+                    coordinates.push([x, y]);
+                }
+            }
+
+            for (const x of [centerX - r, centerX + r]) {
+                for (const y of range(centerY - r, centerY + r)) {
+                    coordinates.push([x, y]);
+                }
+            }
+
+            const targetColor = cast.toRgbColorList(color);
+            const currentColor = new Uint8ClampedArray(4);
+
+            for (const [x, y] of coordinates) {
+                const point = twgl.v3.create(x, y);
+                threadTarget.renderer.constructor.sampleColor3b(point, touchables, currentColor);
+                if (colorMatches(targetColor, currentColor)) {
+                    return {
+                        distance: [Math.hypot(x, y), 0],
+                        colorFound: true
+                    };
+                }
+            }
         }
 
-        const renderer = tgt.renderer;
-        const color3b = cast.toRgbColorList(args.COLOR);
-        const stageDiameter = Math.sqrt(
-            Math.pow((renderer._xRight - renderer._xLeft), 2) +
-            Math.pow((renderer._yTop - renderer._yBottom), 2)
-        );
-        const point = twgl.v3.create();
-        const color = new Uint8ClampedArray(4);
+        return {
+            distance: [searchRadius, 0],
+            colorFound: false
+        };
+    };
+
+    const fuzzyContainsColor = function (centerX, centerY, bound, touchables, color) {
+        const {colorFound} = fuzzyFindDistanceToColor(centerX, centerY, bound, touchables, color);
+        return colorFound;
+    };
+
+    const handleTouchingColorFalse = function (color) {
+        const renderer = threadTarget.renderer;
+        const stageDiameter = Math.hypot(renderer._xRight - renderer._xLeft, renderer._yTop - renderer._yBottom);
+
         const touchables = [];
         for (let index = renderer._visibleDrawList.length - 1; index >= 0; index--){
             const id = renderer._visibleDrawList[index];
-            if (id !== tgt.drawableID) {
+            if (id !== threadTarget.drawableID) {
                 const drawable = renderer._allDrawables[id];
-                touchables.push({
-                    id,
-                    drawable
-                });
+                touchables.push({id, drawable});
             }
         }
-        let r = 1;
-        let rPrev = 1;
-        while (r < stageDiameter) {
-            const coordinates = [];
-            for (const x of [-r, r]) {
-                for (let y = -r; y <= r; y++) {
-                    coordinates.push([x, y]);
-                }
-            }
-            for (const y of [-r, r]) {
-                for (let x = -r; x <= r; x++) {
-                    coordinates.push([x, y]);
-                }
-            }
-            for (const [x, y] of coordinates) {
-                point[0] = tgt.x + x;
-                point[1] = tgt.y + y;
-                renderer.constructor.sampleColor3b(point, touchables, color);
-                if (colorMatches(color, color3b)) {
-                    return [Math.hypot(x, y), 0];
-                }
-            }
-            [rPrev, r] = [r, r + rPrev];
-        }
-        return [stageDiameter, 0];
+
+        const {distance} =
+            fuzzyFindDistanceToColor(threadTarget.x, threadTarget.y, stageDiameter, touchables, color);
+        return distance;
     };
 
     if (shortname === 'touchingColor') {
-        return handleTouchingColor(argValues, threadTarget);
+        const touchingColor = sensing.getPrimitives().sensing_touchingcolor.bind(sensing);
+
+        if (touchingColor(argValues, blockUtility)) {
+            return [0, 1];
+        }
+
+        return handleTouchingColorFalse(argValues.COLOR);
     }
 
     if (shortname === 'colorTouchingColor') {
@@ -779,68 +807,35 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         const color1 = argValues.COLOR;
         const color2 = argValues.COLOR2;
 
-        const fuzzyContainsColor = function (COLOR) {
-            const color3b = cast.toRgbColorList(COLOR);
-            const renderer = threadTarget.renderer;
+        const centerX = threadTarget.x;
+        const centerY = threadTarget.y;
+        const radius = threadTarget.size / 2;
 
-            const center = {x: threadTarget.x, y: threadTarget.y};
-            const radius = threadTarget.size / 2;
+        const id = threadTarget.drawableId;
+        const drawable = threadTarget.renderer._allDrawables[id];
+        const self = [{id, drawable}];
 
-            const color = new Uint8ClampedArray(4);
+        const selfContainsColor = fuzzyContainsColor.bind(null, centerX, centerY, radius, self);
 
-            let r = 1;
-            let rPrev = r;
-
-            while (r < radius) {
-                const coordinates = [];
-                for (const x of [-r, r]) {
-                    for (let y = -r; y <= r; y++) {
-                        coordinates.push([center.x + x, center.y + y]);
-                    }
-                }
-                for (const y of [-r, r]) {
-                    for (let x = -r; x <= r; x++) {
-                        coordinates.push([center.x + x, center.y + y]);
-                    }
-                }
-                for (const [x, y] of coordinates) {
-                    const point = twgl.v3.create(x, y);
-                    const id = threadTarget.drawableId;
-                    const drawable = renderer._allDrawables[id];
-                    const self = {id, drawable};
-                    renderer.constructor.sampleColor3b(point, self, color);
-                    if (colorMatches(color, color3b)) {
-                        return true;
-                    }
-                }
-                [rPrev, r] = [r, r + rPrev];
-            }
-
-            return false;
-        };
-
-        const containsColor1 = fuzzyContainsColor(color1);
-        const containsColor2 = fuzzyContainsColor(color2);
+        const containsColor1 = selfContainsColor(color1);
+        const containsColor2 = selfContainsColor(color2);
 
         if (!containsColor1 && !containsColor2) {
-            const renderer = threadTarget.renderer;
-            const stageWidth = renderer._xRight - renderer._xLeft;
-            const stageHeight = renderer._yTop - renderer._yBottom;
-            const stageDiameter = Math.hypot(stageWidth, stageHeight);
-            return [stageDiameter, 0];
+            return [1, 0];
         }
 
         if (containsColor1 && !containsColor2) {
-            return handleTouchingColor(color2, threadTarget);
+            return handleTouchingColorFalse(color2);
         }
 
         if (containsColor2 && !containsColor1) {
-            return handleTouchingColor(color1, threadTarget);
+            return handleTouchingColorFalse(color1);
         }
 
-        const [trueDist1] = handleTouchingColor(color1, threadTarget);
-        const [trueDist2] = handleTouchingColor(color2, threadTarget);
-        return [Math.min(trueDist1, trueDist2), 0];
+        const [trueDist1] = handleTouchingColorFalse(color1);
+        const [trueDist2] = handleTouchingColorFalse(color2);
+        const trueDist = Math.max(1, Math.min(trueDist1, trueDist2));
+        return [trueDist, 0];
     }
 
     if (shortname === 'touchingObject') {
