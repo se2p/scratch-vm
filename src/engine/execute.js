@@ -805,7 +805,7 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         const color1 = argValues.COLOR;
         const color2 = argValues.COLOR2;
 
-        const [costumeSizeX, costumeSizeY] = threadTarget.sprite.costumes[threadTarget.currentCostume];
+        const [costumeSizeX, costumeSizeY] = threadTarget.sprite.costumes[threadTarget.currentCostume].size;
         const scalingFactor = threadTarget.size / 100;
         const searchRadius = Math.max(costumeSizeX, costumeSizeY) * scalingFactor / 2;
 
