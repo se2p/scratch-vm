@@ -750,7 +750,7 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
             }
 
             const targetColor = cast.toRgbColorList(color);
-            const currentColor = new Uint8ClampedArray(4);
+            const currentColor = new Uint8ClampedArray(3);
 
             for (const [x, y] of coordinates) {
                 const point = twgl.v3.create(x, y);
@@ -816,32 +816,17 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         const centerX = threadTarget.x;
         const centerY = threadTarget.y;
         const radius = threadTarget.size / 2;
-
         const id = threadTarget.drawableID;
         const drawable = threadTarget.renderer._allDrawables[id];
         const self = [{id, drawable}];
 
-        const selfContainsColor = fuzzyContainsColor.bind(null, centerX, centerY, radius, self);
+        const containsColor1 = fuzzyContainsColor(centerX, centerY, radius, self, color1);
 
-        const containsColor1 = selfContainsColor(color1);
-        const containsColor2 = selfContainsColor(color2);
-
-        if (!containsColor1 && !containsColor2) {
+        if (!containsColor1) {
             return [1, 0];
         }
 
-        if (containsColor1 && !containsColor2) {
-            return handleTouchingColorFalse(color2);
-        }
-
-        if (containsColor2 && !containsColor1) {
-            return handleTouchingColorFalse(color1);
-        }
-
-        const [trueDist1] = handleTouchingColorFalse(color1);
-        const [trueDist2] = handleTouchingColorFalse(color2);
-        const trueDist = Math.max(1, Math.min(trueDist1, trueDist2));
-        return [trueDist, 0];
+        return handleTouchingColorFalse(color2);
     }
 
     if (shortname === 'touchingObject') {
