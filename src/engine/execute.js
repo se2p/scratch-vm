@@ -811,6 +811,7 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
 
         const id = threadTarget.drawableID;
         const drawable = threadTarget.renderer._allDrawables[id];
+        drawable.updateCPURenderAttributes();
         const self = [{id, drawable}];
 
         const result = fuzzyFindColor(searchRadius, self, color1);
