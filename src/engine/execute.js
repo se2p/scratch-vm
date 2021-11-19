@@ -713,16 +713,13 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
     );
 
     const fibs = function (bound, current = 1, next = 2) {
-        const f = function* (c, n) {
-            if (c > bound) {
-                return c;
-            }
-
-            yield c;
-            yield* f(n, c + n);
-        };
-
-        return f(current, next);
+        const numbers = [];
+        while (current < bound) {
+            numbers.push(current);
+            [current, next] = [next, current + next];
+        }
+        numbers.push(bound);
+        return numbers;
     };
 
     const range = function (from, to) {
@@ -733,9 +730,8 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         return values;
     };
 
-    const fuzzyFindDistanceToColor = function (searchRadius, touchables, color) {
-        const centerX = threadTarget.x;
-        const centerY = threadTarget.y;
+    const fuzzyFindColor = function (searchRadius, touchables, color, center = [threadTarget.x, threadTarget.y]) {
+        const [centerX, centerY] = center;
 
         for (const r of fibs(searchRadius)) {
             const coordinates = [];
@@ -759,7 +755,8 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
                 if (colorMatches(targetColor, currentColor)) {
                     return {
                         distance: [Math.hypot(x, y), 0],
-                        colorFound: true
+                        colorFound: true,
+                        coordinates: [x, y]
                     };
                 }
             }
@@ -771,12 +768,7 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         };
     };
 
-    const fuzzyContainsColor = function (searchRadius, touchables, color) {
-        const {colorFound} = fuzzyFindDistanceToColor(searchRadius, touchables, color);
-        return colorFound;
-    };
-
-    const handleTouchingColorFalse = function (color) {
+    const handleTouchingColorFalse = function (color, center = [threadTarget.x, threadTarget.y]) {
         const renderer = threadTarget.renderer;
         const stageDiameter = Math.hypot(renderer._xRight - renderer._xLeft, renderer._yTop - renderer._yBottom);
 
@@ -789,7 +781,7 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
             }
         }
 
-        const {distance} = fuzzyFindDistanceToColor(stageDiameter, touchables, color);
+        const {distance} = fuzzyFindColor(stageDiameter, touchables, color, center);
         return distance;
     };
 
@@ -818,13 +810,13 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         const drawable = threadTarget.renderer._allDrawables[id];
         const self = [{id, drawable}];
 
-        const containsColor1 = fuzzyContainsColor(radius, self, color1);
+        const result = fuzzyFindColor(radius, self, color1);
 
-        if (!containsColor1) {
+        if (!result.colorFound) {
             return [1, 0];
         }
 
-        return handleTouchingColorFalse(color2);
+        return handleTouchingColorFalse(color2, result.coordinates);
     }
 
     if (shortname === 'touchingObject') {
