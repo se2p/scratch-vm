@@ -811,7 +811,7 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         const centerY = threadTarget.y;
         const radius = threadTarget.size / 2;
 
-        const id = threadTarget.drawableId;
+        const id = threadTarget.drawableID;
         const drawable = threadTarget.renderer._allDrawables[id];
         const self = [{id, drawable}];
 
