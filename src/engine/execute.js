@@ -760,9 +760,9 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
      * found, the distance is assumed to be the search radius.
      *
      * @param {number} searchRadius the search radius
-     * @param {Drawable[]} touchables array of touchable objects to search in
+     * @param {{number, Drawable}[]} touchables array of touchable objects to search in
      * @param {string} color the color to search for in "#RRGGBB" hex format
-     * @param {[number, number]} center the center of the search cirle
+     * @param {[number, number]} center the center of the search circle
      * @return {{distance: [number, number], colorFound: boolean, coordinates: [number, number]}} the search result
      */
     const fuzzyFindColor = function (searchRadius, touchables, color, center = [threadTarget.x, threadTarget.y]) {
@@ -870,7 +870,7 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         const drawable = threadTarget.renderer._allDrawables[id];
         const thisSprite = [{id, drawable}];
 
-        // Search for color1.
+        // Search for color1 within the current costume of the sprite.
         drawable.updateCPURenderAttributes(); // Necessary, otherwise color sampling does not work.
         const result = fuzzyFindColor(searchRadius, thisSprite, color1);
 
@@ -880,8 +880,8 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         }
 
         // If color1 is present, the semantics of the 'colorTouchingColor' block are almost the same as 'touchingColor'
-        // with target color2. Instead of considering the entire costume (which can also have other colors but color1),
-        // we use the coordinates where color1 was actually found for branch distance computation.
+        // with target color2. But instead of considering the entire costume (which can also have other colors but
+        // color1), we use the coordinates where color1 was actually found for branch distance computation.
         return handleTouchingColorFalse(color2, result.coordinates);
     }
 
