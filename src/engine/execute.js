@@ -706,12 +706,28 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         }
     }
 
+    /**
+     * Tells whether the two given colors (in [R,G,B] color array format) match.
+     *
+     * @param {number[]} a the first color
+     * @param {number[]} b the second color
+     * @return {boolean} true iff the colors match
+     */
     const colorMatches = (a, b) => (
         (a[0] & 0b11111000) === (b[0] & 0b11111000) &&
         (a[1] & 0b11111000) === (b[1] & 0b11111000) &&
         (a[2] & 0b11110000) === (b[2] & 0b11110000)
     );
 
+    /**
+     * Creates the list of Fibonacci numbers constructed from the given two numbers "current" and "next", and uses the
+     * given "bound" (inclusive) as the highest number in the list.
+     *
+     * @param {number} bound the upper bound
+     * @param {number} current the first number (by default, 1)
+     * @param {number} next the second number (by default, 2)
+     * @return {number[]} the list of Fibonacci numbers
+     */
     const fibs = function (bound, current = 1, next = 2) {
         const numbers = [];
         while (current < bound) {
@@ -722,6 +738,13 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         return numbers;
     };
 
+    /**
+     * Creates the range of integral numbers [from, to].
+     *
+     * @param {number} from the lower bound
+     * @param {number} to the upper bound
+     * @return {number[]} the range [from, to].
+     */
     const range = function (from, to) {
         const values = [];
         for (let i = from; i <= to; i++) {
@@ -730,9 +753,23 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         return values;
     };
 
+    /**
+     * In the given list of touchable objects, tries to find the specified color within the circle given by the center
+     * point and searchRadius. If the search was successful, the returned object contains the coordinates where the
+     * color was located, and the distance to the color from the center of the search circle. If the color was not
+     * found, the distance is assumed to be the search radius.
+     *
+     * @param {number} searchRadius the search radius
+     * @param {Drawable[]} touchables array of touchable objects to search in
+     * @param {string} color the color to search for in "#RRGGBB" hex format
+     * @param {[number, number]} center the center of the search cirle
+     * @return {{distance: [number, number], colorFound: boolean, coordinates: [number, number]}} the search result
+     */
     const fuzzyFindColor = function (searchRadius, touchables, color, center = [threadTarget.x, threadTarget.y]) {
         const [centerX, centerY] = center;
+        const targetColor = cast.toRgbColorList(color);
 
+        // We look for the color in ever increasing circles around the search center.
         for (const r of fibs(searchRadius)) {
             const coordinates = [];
 
@@ -748,7 +785,7 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
                 }
             }
 
-            const targetColor = cast.toRgbColorList(color);
+            // Check if the color is located at the current pixel.
             for (const [x, y] of coordinates) {
                 const point = twgl.v3.create(x, y);
                 const currentColor = threadTarget.renderer.constructor.sampleColor3b(point, touchables);
@@ -768,10 +805,22 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         };
     };
 
+    /**
+     * Returns the branch distances for "touchingColor" blocks when the current sprite does not touch the color.
+     *
+     * @param {string} color the color to touch in "#RRGGBB" hex format
+     * @param {[number, number]} center a point located within the current sprite to compute the distance from (by
+     * default, the center of the sprite)
+     * @return {[number, number]} the branch distance
+     */
     const handleTouchingColorFalse = function (color, center = [threadTarget.x, threadTarget.y]) {
         const renderer = threadTarget.renderer;
-        const stageDiameter = Math.hypot(renderer._xRight - renderer._xLeft, renderer._yTop - renderer._yBottom);
 
+        const width = renderer._xRight - renderer._xLeft;
+        const height = renderer._yTop - renderer._yBottom;
+        const stageDiameter = Math.hypot(width, height);
+
+        // Constructs a list of touchable objects excluding the current sprite itself.
         const touchables = [];
         for (let index = renderer._visibleDrawList.length - 1; index >= 0; index--){
             const id = renderer._visibleDrawList[index];
@@ -795,31 +844,44 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         return handleTouchingColorFalse(argValues.COLOR);
     }
 
-    if (shortname === 'colorTouchingColor') {
+    if (shortname === 'colorTouchingColor') { // https://en.scratch-wiki.info/wiki/Color_()_is_Touching_()%3F_(block)
         const colorTouchingColor = sensing.getPrimitives().sensing_coloristouchingcolor.bind(sensing);
 
+        // The first color of the 'colorTouchingColor' block. This color must be present in the current costume of the
+        // sprite.
+        const color1 = argValues.COLOR;
+
+        // The second color of the 'colorTouchingColor' block. This color is the one we want to touch.
+        const color2 = argValues.COLOR2;
+
+        // Check if the current sprite already contains color1 and touches color2.
         if (colorTouchingColor(argValues, blockUtility)) {
             return [0, 1];
         }
 
-        const color1 = argValues.COLOR;
-        const color2 = argValues.COLOR2;
-
+        // The sprite does not touch color2 yet. We have to check if the current costume of the sprite contains color1.
+        // To this, we compute the geometry of the current costume, and use this as search area for color1.
         const [costumeSizeX, costumeSizeY] = threadTarget.sprite.costumes[threadTarget.currentCostume].size;
         const scalingFactor = threadTarget.size / 100;
         const searchRadius = Math.max(costumeSizeX, costumeSizeY) * scalingFactor / 2;
 
+        // The current sprite represented as Drawable object.
         const id = threadTarget.drawableID;
         const drawable = threadTarget.renderer._allDrawables[id];
-        drawable.updateCPURenderAttributes();
-        const self = [{id, drawable}];
+        const thisSprite = [{id, drawable}];
 
-        const result = fuzzyFindColor(searchRadius, self, color1);
+        // Search for color1.
+        drawable.updateCPURenderAttributes(); // Necessary, otherwise color sampling does not work.
+        const result = fuzzyFindColor(searchRadius, thisSprite, color1);
 
+        // If color1 is not present in the costume, the 'colorTouchingColor' block always reports false.
         if (!result.colorFound) {
             return [1, 0];
         }
 
+        // If color1 is present, the semantics of the 'colorTouchingColor' block are almost the same as 'touchingColor'
+        // with target color2. Instead of considering the entire costume (which can also have other colors but color1),
+        // we use the coordinates where color1 was actually found for branch distance computation.
         return handleTouchingColorFalse(color2, result.coordinates);
     }
 
@@ -834,7 +896,7 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         }
 
         if (argValues.TOUCHINGOBJECTMENU === '_edge_') {
-            const minEdgeDist = Math.min(...[240 + threadTarget.x, 180 + threadTarget.y, 240 - threadTarget.x, 180 - threadTarget.y]);
+            const minEdgeDist = Math.min(240 + threadTarget.x, 180 + threadTarget.y, 240 - threadTarget.x, 180 - threadTarget.y);
             if (minEdgeDist === 0) {
                 return [0, 1];
             } else {
