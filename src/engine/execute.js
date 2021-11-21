@@ -791,7 +791,7 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
                 const currentColor = threadTarget.renderer.constructor.sampleColor3b(point, touchables);
                 if (colorMatches(targetColor, currentColor)) {
                     return {
-                        distance: [Math.hypot(x, y), 0],
+                        distance: [Math.hypot(centerX - x, centerY - y), 0],
                         colorFound: true,
                         coordinates: [x, y]
                     };
