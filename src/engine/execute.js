@@ -628,6 +628,8 @@ const execute = function (sequencer, thread) {
                     parentValues[inputName] = primitiveReportedValue;
                 }
             }
+        } else if (timeDependentOpCodes.includes(opCached.opcode)){
+            opCached._distances[0] = primitiveBranchDistanceValue;
         }
     }
 
@@ -690,7 +692,7 @@ const branchDistanceValue = function (blockFunction, argValues, opCached, primit
 
     // Special treatment for text2speech block since we may still have to wait for the response containing the
     // translated text and duration.
-    if(opCached.opcode === 'text2speech_speakAndWait') {
+    if (opCached.opcode === 'text2speech_speakAndWait') {
         const remainingDuration = blockUtility.getScaledRemainingHaltingTime();
         if (remainingDuration === 0) {
             return [0, 1];
@@ -702,7 +704,7 @@ const branchDistanceValue = function (blockFunction, argValues, opCached, primit
         }
     }
 
-    if(timeDependentOpCodes.includes(opCached.opcode)){
+    if (timeDependentOpCodes.includes(opCached.opcode)){
         const remainingDuration = blockUtility.getScaledRemainingHaltingTime();
         if(remainingDuration === 0){
             return [0, 1];
