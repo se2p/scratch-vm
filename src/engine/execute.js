@@ -628,7 +628,9 @@ const execute = function (sequencer, thread) {
                     parentValues[inputName] = primitiveReportedValue;
                 }
             }
-        } else if (timeDependentOpCodes.includes(opCached.opcode)){
+        }
+        // Add branchDistances for time-dependent executionHalting blocks.
+        else if (timeDependentOpCodes.includes(opCached.opcode)){
             opCached._distances[0] = primitiveBranchDistanceValue;
         }
     }
@@ -698,12 +700,12 @@ const branchDistanceValue = function (blockFunction, argValues, opCached, primit
             return [0, 1];
         } else if (remainingDuration === null){
             return [1, 0];
-        }
-        else{
+        } else{
             return [blockUtility.getScaledRemainingHaltingTime(), 0];
         }
     }
 
+    // Add branchDistances for time-dependent executionHalting blocks.
     if (timeDependentOpCodes.includes(opCached.opcode)){
         const remainingDuration = blockUtility.getScaledRemainingHaltingTime();
         if(remainingDuration === 0){
