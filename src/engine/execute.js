@@ -574,7 +574,7 @@ const execute = function (sequencer, thread) {
         // Inputs are set during previous steps in the loop.
 
         const primitiveReportedValue = blockFunction(argValues, blockUtility);
-        const primitiveBranchDistanceValue = branchDistanceValue(blockFunction, argValues, opCached._distances, primitiveReportedValue, runtime, thread.target, blockUtility);
+        const primitiveBranchDistanceValue = branchDistanceValue(blockFunction, argValues, opCached, primitiveReportedValue, runtime, thread.target, blockUtility);
 
         // If it's a promise, wait until promise resolves.
         if (isPromise(primitiveReportedValue)) {
@@ -876,7 +876,7 @@ const branchDistanceValue = function (blockFunction, argValues, opCached, primit
         return distance;
     };
 
-    if (opCached.opcode === 'sensing_touchingColor') {
+    if (opCached.opcode === 'sensing_touchingcolor') {
         const touchingColor = sensing.getPrimitives().sensing_touchingcolor.bind(sensing);
 
         if (touchingColor(argValues, blockUtility)) {
@@ -886,7 +886,7 @@ const branchDistanceValue = function (blockFunction, argValues, opCached, primit
         return handleTouchingColorFalse(argValues.COLOR);
     }
 
-    if (opCached.opcode === 'sensing_colorTouchingColor') { // https://en.scratch-wiki.info/wiki/Color_()_is_Touching_()%3F_(block)
+    if (opCached.opcode === 'sensing_coloristouchingcolor') { // https://en.scratch-wiki.info/wiki/Color_()_is_Touching_()%3F_(block)
         const colorTouchingColor = sensing.getPrimitives().sensing_coloristouchingcolor.bind(sensing);
 
         // The first color of the 'colorTouchingColor' block. This color must be present in the current costume of the
@@ -927,7 +927,7 @@ const branchDistanceValue = function (blockFunction, argValues, opCached, primit
         return handleTouchingColorFalse(color2, result.coordinates);
     }
 
-    if (opCached.opcode === 'sensing_touchingObject') {
+    if (opCached.opcode === 'sensing_touchingobject') {
         dist_args = {};
         dist_args.DISTANCETOMENU = argValues.TOUCHINGOBJECTMENU;
 
