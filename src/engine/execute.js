@@ -24,13 +24,14 @@ const blockFunctionProfilerFrame = 'blockFunction';
  * @type {string[]}
  */
 const timeDependentOpCodes = ['control_wait', 'looks_thinkforsecs', 'looks_sayforsecs', 'motion_glidesecstoxy',
-    'sound_playuntildone', 'text2speech_speakAndWait'];
+    'motion_glideto', 'sound_playuntildone', 'text2speech_speakAndWait'];
 
 /**
  * Holds all operator opcodes.
  * @type {string[]}
  */
-const operatorBlockOpcode = ['operator_lt', 'operator_gt', 'operator_equals', 'operator_and', 'operator_or', 'operator_not'];
+const operatorBlockOpcode = ['operator_lt', 'operator_gt', 'operator_equals', 'operator_and', 'operator_or',
+    'operator_not'];
 
 /**
  * Profiler frame ID for 'blockFunction'.

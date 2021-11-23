@@ -98,12 +98,6 @@ class Tracer {
             case 'data_variable': // These occur due to displaying a variable's value
             case 'data_listcontents': // These occur due to displaying list monitor
                 return false;
-            case 'motion_glideto':
-                if (this.lastTraced.id === block.id) {
-                    this.lastTraced.updateTargets(this.targets);
-                    return false;
-                }
-                break;
             }
         }
         return true;
