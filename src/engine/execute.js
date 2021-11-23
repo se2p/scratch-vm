@@ -630,7 +630,7 @@ const execute = function (sequencer, thread) {
                 }
             }
         }
-        // Add branchDistances for time-dependent executionHalting blocks.
+        // Add branchDistances for time-dependent execution halting blocks.
         else if (timeDependentOpCodes.includes(opCached.opcode)){
             opCached._distances[0] = primitiveBranchDistanceValue;
         }
@@ -706,7 +706,7 @@ const branchDistanceValue = function (blockFunction, argValues, opCached, primit
         }
     }
 
-    // Add branchDistances for time-dependent executionHalting blocks.
+    // Add branchDistances for time-dependent execution halting blocks.
     if (timeDependentOpCodes.includes(opCached.opcode)){
         const remainingDuration = blockUtility.getScaledRemainingHaltingTime();
         if(remainingDuration === 0){
