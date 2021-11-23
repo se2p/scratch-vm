@@ -20,6 +20,19 @@ const blockUtility = new BlockUtility();
 const blockFunctionProfilerFrame = 'blockFunction';
 
 /**
+ * Holds all timeDependent opcodes.
+ * @type {string[]}
+ */
+const timeDependentOpCodes = ['control_wait', 'looks_thinkforsecs', 'looks_sayforsecs', 'motion_glidesecstoxy',
+    'sound_playuntildone', 'text2speech_speakAndWait'];
+
+/**
+ * Holds all operator opcodes.
+ * @type {string[]}
+ */
+const operatorBlockOpcode = ['operator_lt', 'operator_gt', 'operator_equals', 'operator_and', 'operator_or', 'operator_not'];
+
+/**
  * Profiler frame ID for 'blockFunction'.
  * @type {number}
  */
@@ -175,6 +188,12 @@ class BlockCached {
          * @type {string}
          */
         this.opcode = cached.opcode;
+
+        /**
+         * Specifies whether this block is a time-dependent execution halting block such as a wait block.
+         * @type {boolean}
+         */
+        this.isTimeDependentBlock = false;
 
         /**
          * Original block object containing argument values for static fields.
@@ -401,6 +420,8 @@ class BlockCached {
         if (this._definedBlockFunction) {
             this._ops.push(this);
         }
+
+        this.isTimeDependentBlock = timeDependentOpCodes.includes(this.opcode);
     }
 }
 
@@ -662,19 +683,40 @@ const getCachedFalseDistance = function (distanceValues) {
 
 let sensing = undefined;
 
-branchDistanceValue = function (blockFunction, argValues, distanceValues, primitiveReportedValue, runtime, threadTarget, blockUtility) {
+const branchDistanceValue = function (blockFunction, argValues, opCached, primitiveReportedValue, runtime, threadTarget, blockUtility) {
     if (sensing === undefined || sensing.runtime !== runtime) {
         sensing = new Sensing(runtime);
     }
 
-    const name = blockFunction.name;
-    const shortname = name.replace('bound ', '');
+    // Special treatment for text2speech block since we may still have to wait for the response containing the
+    // translated text and duration.
+    if(opCached.opcode === 'text2speech_speakAndWait') {
+        const remainingDuration = blockUtility.getScaledRemainingHaltingTime();
+        if (remainingDuration === 0) {
+            return [0, 1];
+        } else if (remainingDuration === null){
+            return [1, 0];
+        }
+        else{
+            return [blockUtility.getScaledRemainingHaltingTime(), 0];
+        }
+    }
 
-    if (shortname === 'forever') {
+    if(timeDependentOpCodes.includes(opCached.opcode)){
+        const remainingDuration = blockUtility.getScaledRemainingHaltingTime();
+        if(remainingDuration === 0){
+            return [0,1];
+        }
+        else{
+            return [blockUtility.getScaledRemainingHaltingTime(), 0];
+        }
+    }
+
+    if (opCached.opcode === 'control_forever') {
         return [0, 1];
     }
 
-    if (shortname === 'repeat') {
+    if (opCached.opcode === 'control_repeat') {
         // Get total number of iterations as fallback
         let times = Math.round(cast.toNumber(argValues.TIMES));
         if (blockUtility.thread.stackFrames.length > 0 &&
@@ -690,7 +732,7 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         }
     }
 
-    if (shortname === 'getKeyPressed') {
+    if (opCached.opcode === 'sensing_keypressed') {
         if (primitiveReportedValue === true) {
             return [0, 1];
         } else {
@@ -698,7 +740,7 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         }
     }
 
-    if (shortname === 'getMouseDown') {
+    if (opCached.opcode === 'sensing_mousedown') {
         if (primitiveReportedValue === true) {
             return [0, 1];
         } else {
@@ -706,73 +748,186 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         }
     }
 
-    if (shortname === 'touchingColor') {
-        const touching = sensing.getPrimitives().sensing_touchingcolor;
-        const touchingColor = touching.bind(sensing);
+    /**
+     * Tells whether the two given colors (in [R,G,B] color array format) match.
+     *
+     * @param {number[]} a the first color
+     * @param {number[]} b the second color
+     * @return {boolean} true iff the colors match
+     */
+    const colorMatches = (a, b) => (
+        (a[0] & 0b11111000) === (b[0] & 0b11111000) &&
+        (a[1] & 0b11111000) === (b[1] & 0b11111000) &&
+        (a[2] & 0b11110000) === (b[2] & 0b11110000)
+    );
 
-        if (touchingColor(argValues, blockUtility)) {
-            return [0, 1];
+    /**
+     * Creates the list of Fibonacci numbers constructed from the given two numbers "current" and "next", and uses the
+     * given "bound" (inclusive) as the highest number in the list.
+     *
+     * @param {number} bound the upper bound
+     * @param {number} current the first number (by default, 1)
+     * @param {number} next the second number (by default, 2)
+     * @return {number[]} the list of Fibonacci numbers
+     */
+    const fibs = function (bound, current = 1, next = 2) {
+        const numbers = [];
+        while (current < bound) {
+            numbers.push(current);
+            [current, next] = [next, current + next];
+        }
+        numbers.push(bound);
+        return numbers;
+    };
+
+    /**
+     * Creates the range of integral numbers [from, to].
+     *
+     * @param {number} from the lower bound
+     * @param {number} to the upper bound
+     * @return {number[]} the range [from, to].
+     */
+    const range = function (from, to) {
+        const values = [];
+        for (let i = from; i <= to; i++) {
+            values.push(i);
+        }
+        return values;
+    };
+
+    /**
+     * In the given list of touchable objects, tries to find the specified color within the circle given by the center
+     * point and searchRadius. If the search was successful, the returned object contains the coordinates where the
+     * color was located, and the distance to the color from the center of the search circle. If the color was not
+     * found, the distance is assumed to be the search radius.
+     *
+     * @param {number} searchRadius the search radius
+     * @param {{number, Drawable}[]} touchables array of touchable objects to search in
+     * @param {string} color the color to search for in "#RRGGBB" hex format
+     * @param {[number, number]} center the center of the search circle
+     * @return {{distance: [number, number], colorFound: boolean, coordinates: [number, number]}} the search result
+     */
+    const fuzzyFindColor = function (searchRadius, touchables, color, center = [threadTarget.x, threadTarget.y]) {
+        const [centerX, centerY] = center;
+        const targetColor = cast.toRgbColorList(color);
+
+        // We look for the color in ever increasing circles around the search center.
+        for (const r of fibs(searchRadius)) {
+            const coordinates = [];
+
+            for (const y of [centerY - r, centerY + r]) {
+                for (const x of range(centerX - r, centerX + r)) {
+                    coordinates.push([x, y]);
+                }
+            }
+
+            for (const x of [centerX - r, centerX + r]) {
+                for (const y of range(centerY - r, centerY + r)) {
+                    coordinates.push([x, y]);
+                }
+            }
+
+            // Check if the color is located at the current pixel.
+            for (const [x, y] of coordinates) {
+                const point = twgl.v3.create(x, y);
+                const currentColor = threadTarget.renderer.constructor.sampleColor3b(point, touchables);
+                if (colorMatches(targetColor, currentColor)) {
+                    return {
+                        distance: [Math.hypot(centerX - x, centerY - y), 0],
+                        colorFound: true,
+                        coordinates: [x, y]
+                    };
+                }
+            }
         }
 
-        const colorMatches = (a, b, offset) => (
-            (a[0] & 0b11111000) === (b[offset + 0] & 0b11111000) &&
-            (a[1] & 0b11111000) === (b[offset + 1] & 0b11111000) &&
-            (a[2] & 0b11110000) === (b[offset + 2] & 0b11110000)
-        );
+        return {
+            distance: [searchRadius, 0],
+            colorFound: false
+        };
+    };
 
+    /**
+     * Returns the branch distances for "touchingColor" blocks when the current sprite does not touch the color.
+     *
+     * @param {string} color the color to touch in "#RRGGBB" hex format
+     * @param {[number, number]} center a point located within the current sprite to compute the distance from (by
+     * default, the center of the sprite)
+     * @return {[number, number]} the branch distance
+     */
+    const handleTouchingColorFalse = function (color, center = [threadTarget.x, threadTarget.y]) {
         const renderer = threadTarget.renderer;
-        const color3b = cast.toRgbColorList(argValues.COLOR);
-        const stageDiameter = Math.sqrt(
-            Math.pow((renderer._xRight - renderer._xLeft), 2) +
-            Math.pow((renderer._yTop - renderer._yBottom), 2)
-        );
-        const point = twgl.v3.create();
-        const color = new Uint8ClampedArray(4);
+
+        const width = renderer._xRight - renderer._xLeft;
+        const height = renderer._yTop - renderer._yBottom;
+        const stageDiameter = Math.hypot(width, height);
+
+        // Constructs a list of touchable objects excluding the current sprite itself.
         const touchables = [];
         for (let index = renderer._visibleDrawList.length - 1; index >= 0; index--){
             const id = renderer._visibleDrawList[index];
             if (id !== threadTarget.drawableID) {
                 const drawable = renderer._allDrawables[id];
-                touchables.push({
-                    id,
-                    drawable
-                });
+                touchables.push({id, drawable});
             }
         }
-        let r = 1;
-        let rPrev = 1;
-        while (r < stageDiameter) {
-            const coordinates = [];
-            for (const x of [-r, r]) {
-                for (let y = -r; y <= r; y++) {
-                    coordinates.push([x, y]);
-                }
-            }
-            for (const y of [-r, r]) {
-                for (let x = -r; x <= r; x++) {
-                    coordinates.push([x, y]);
-                }
-            }
-            for (const c of coordinates) {
-                const x = c[0];
-                const y = c[1];
-                point[0] = threadTarget.x + x;
-                point[1] = threadTarget.y + y;
-                renderer.constructor.sampleColor3b(point, touchables, color);
-                if (colorMatches(color, color3b, 0)) {
-                    return [Math.sqrt(
-                        Math.pow(x, 2) +
-                        Math.pow(y, 2)
-                    ), 0];
-                }
-            }
-            [rPrev, r] = [r, r + rPrev];
+
+        const {distance} = fuzzyFindColor(stageDiameter, touchables, color, center);
+        return distance;
+    };
+
+    if (opCached.opcode === 'sensing_touchingColor') {
+        const touchingColor = sensing.getPrimitives().sensing_touchingcolor.bind(sensing);
+
+        if (touchingColor(argValues, blockUtility)) {
+            return [0, 1];
         }
-        return [stageDiameter, 0];
+
+        return handleTouchingColorFalse(argValues.COLOR);
     }
 
+    if (opCached.opcode === 'sensing_colorTouchingColor') { // https://en.scratch-wiki.info/wiki/Color_()_is_Touching_()%3F_(block)
+        const colorTouchingColor = sensing.getPrimitives().sensing_coloristouchingcolor.bind(sensing);
 
-    if (shortname === 'touchingObject') {
+        // The first color of the 'colorTouchingColor' block. This color must be present in the current costume of the
+        // sprite.
+        const color1 = argValues.COLOR;
+
+        // The second color of the 'colorTouchingColor' block. This color is the one we want to touch.
+        const color2 = argValues.COLOR2;
+
+        // Check if the current sprite already contains color1 and touches color2.
+        if (colorTouchingColor(argValues, blockUtility)) {
+            return [0, 1];
+        }
+
+        // The sprite does not touch color2 yet. We have to check if the current costume of the sprite contains color1.
+        // To this, we compute the geometry of the current costume, and use this as search area for color1.
+        const [costumeSizeX, costumeSizeY] = threadTarget.sprite.costumes[threadTarget.currentCostume].size;
+        const scalingFactor = threadTarget.size / 100;
+        const searchRadius = Math.max(costumeSizeX, costumeSizeY) * scalingFactor / 2;
+
+        // The current sprite represented as Drawable object.
+        const id = threadTarget.drawableID;
+        const drawable = threadTarget.renderer._allDrawables[id];
+        const thisSprite = [{id, drawable}];
+
+        // Search for color1 within the current costume of the sprite.
+        drawable.updateCPURenderAttributes(); // Necessary, otherwise color sampling does not work.
+        const result = fuzzyFindColor(searchRadius, thisSprite, color1);
+
+        // If color1 is not present in the costume, the 'colorTouchingColor' block always reports false.
+        if (!result.colorFound) {
+            return [1, 0];
+        }
+
+        // If color1 is present, the semantics of the 'colorTouchingColor' block are almost the same as 'touchingColor'
+        // with target color2. But instead of considering the entire costume (which can also have other colors but
+        // color1), we use the coordinates where color1 was actually found for branch distance computation.
+        return handleTouchingColorFalse(color2, result.coordinates);
+    }
+
+    if (opCached.opcode === 'sensing_touchingObject') {
         dist_args = {};
         dist_args.DISTANCETOMENU = argValues.TOUCHINGOBJECTMENU;
 
@@ -783,7 +938,7 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         }
 
         if (argValues.TOUCHINGOBJECTMENU === '_edge_') {
-            let minEdgeDist = Math.min(...[240 + threadTarget.x, 180 + threadTarget.y, 240 - threadTarget.x, 180 - threadTarget.y]);
+            const minEdgeDist = Math.min(240 + threadTarget.x, 180 + threadTarget.y, 240 - threadTarget.x, 180 - threadTarget.y);
             if (minEdgeDist === 0) {
                 return [0, 1];
             } else {
@@ -801,13 +956,13 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         }
     }
 
-    if (['lt', 'gt', 'equals', 'and', 'or', 'not'].indexOf(shortname) < 0 && distanceValues) {
+    if (operatorBlockOpcode.includes(opCached.opcode) && opCached._distances) {
         // unsupported operation
         // by default just reuse the previous value
-        return distanceValues[0];
+        return opCached._distances[0];
     }
 
-    if (!argValues && ['and', 'or'].indexOf(shortname) >= 0) {
+    if (!argValues && ['operator_and', 'operator_or'].includes(opCached.opcode)) {
         // Something has gone wrong, cannot calculate distance
         return null;
     }
@@ -819,13 +974,13 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
     if ((isNaN(argValues.OPERAND1) || isNaN(argValues.OPERAND2))) {
         first = cast.toString(argValues.OPERAND1);
         second = cast.toString(argValues.OPERAND2);
-        td = getTrueDistanceString(name, first, second, distanceValues);
-        fd = getFalseDistanceString(name, first, second, distanceValues);
+        td = getTrueDistanceString(name, first, second, opCached._distances);
+        fd = getFalseDistanceString(name, first, second, opCached._distances);
     } else {
         first = cast.toNumber(argValues.OPERAND1);
         second = cast.toNumber(argValues.OPERAND2);
-        td = getTrueDistanceNum(name, first, second, distanceValues);
-        fd = getFalseDistanceNum(name, first, second, distanceValues);
+        td = getTrueDistanceNum(name, first, second, opCached._distances);
+        fd = getFalseDistanceNum(name, first, second, opCached._distances);
     }
 
 
