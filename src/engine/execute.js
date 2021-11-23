@@ -705,7 +705,7 @@ const branchDistanceValue = function (blockFunction, argValues, opCached, primit
     if(timeDependentOpCodes.includes(opCached.opcode)){
         const remainingDuration = blockUtility.getScaledRemainingHaltingTime();
         if(remainingDuration === 0){
-            return [0,1];
+            return [0, 1];
         }
         else{
             return [blockUtility.getScaledRemainingHaltingTime(), 0];
@@ -956,7 +956,7 @@ const branchDistanceValue = function (blockFunction, argValues, opCached, primit
         }
     }
 
-    if (operatorBlockOpcode.includes(opCached.opcode) && opCached._distances) {
+    if (!operatorBlockOpcode.includes(opCached.opcode) && opCached._distances) {
         // unsupported operation
         // by default just reuse the previous value
         return opCached._distances[0];
@@ -971,6 +971,7 @@ const branchDistanceValue = function (blockFunction, argValues, opCached, primit
     let second;
     let td;
     let fd;
+    const name = blockFunction.name;
     if ((isNaN(argValues.OPERAND1) || isNaN(argValues.OPERAND2))) {
         first = cast.toString(argValues.OPERAND1);
         second = cast.toString(argValues.OPERAND2);
