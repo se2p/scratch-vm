@@ -754,7 +754,7 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         };
 
         // The number of points on one horizontal slice (i.e., one row) of the grid.
-        const n = 1 + Math.floor((y - bottom) / space) + Math.floor((top - y) / space);
+        const n = 1 + Math.floor((x - left) / space) + Math.floor((right - x) / space);
 
         /**
          * The canonical enumeration/linearization of the point with the given coordinates.
