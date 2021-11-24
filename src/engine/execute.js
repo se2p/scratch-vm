@@ -730,98 +730,107 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
      * @param {number} space the distance between two neighbors
      */
     const points = function *(start, bounds, space = 10) {
-        const [x, y] = start;
         const {left, right, top, bottom} = bounds;
 
         /**
          * Tells whether the given x-coordinate is within the bounds.
          *
-         * @param {number} _x the coordinate
+         * @param {number} x the coordinate
          * @return {boolean} true iff within bounds
          */
-        const isWithinHorizontalBounds = function (_x) {
-            return left <= _x && _x <= right;
+        const isWithinHorizontalBounds = function (x) {
+            return left <= x && x <= right;
         };
 
         /**
          * Tells whether the given y-coordinate is within the bounds.
          *
-         * @param {number} _y the coordinate
+         * @param {number} y the coordinate
          * @return {boolean} true iff within bounds
          */
-        const isWithinVerticalBounds = function (_y) {
-            return bottom <= _y && _y <= top;
+        const isWithinVerticalBounds = function (y) {
+            return bottom <= y && y <= top;
         };
 
-        // The number of points on one horizontal slice (i.e., one row) of the grid.
-        const n = 1 + Math.floor((x - left) / space) + Math.floor((right - x) / space);
-
-        /**
-         * The canonical enumeration/linearization of the point with the given coordinates.
-         *
-         * @param {number} _x the x-coordinate of the point
-         * @param {number} _y the y-coordinate of the point
-         * @return {number} the linearization of the point
-         */
-        const linearize = function (_x, _y) {
-            return (n * _x) + _y; // We linearize in row-major order.
-        };
-
-        // Set of already visited points on the grid.
-        const visited = new Set();
+        // Array of already visited points on the grid.
+        const visited = [];
 
         /**
          * Tells whether the point with the given coordinates has already been visited.
          *
-         * @param {number} _x the x-coordinate of the point
-         * @param {number} _y the y-coordinate of the point
+         * @param {number} x the x-coordinate of the point
+         * @param {number} y the y-coordinate of the point
          * @return {boolean} true iff the point has not been visited yet
          */
-        const hasNotBeenVisited = function (_x, _y) {
-            return !visited.has(linearize(_x, _y));
+        const hasNotBeenVisited = function ([x, y]) {
+            for (const [_x, _y] of visited) {
+                if (_x === x && _y === y) {
+                    return false;
+                }
+            }
+
+            return true;
         };
 
         /**
          * Marks the point with the given coordinates as visited.
          *
-         * @param {number} _x the x-coordinate of the point
-         * @param {number }_y the y-coordinate of the point
+         * @param {number} x the x-coordinate of the point
+         * @param {number }y the y-coordinate of the point
          */
-        const markVisited = function ([_x, _y]) {
-            visited.add(linearize(_x, _y));
+        const markVisited = function ([x, y]) {
+            for (const [_x, _y] of visited) {
+                if (_x === x && _y === y) {
+                    return; // already marked visited
+                }
+            }
+
+            visited.push([x, y]);
         };
 
         /**
          * Generates all yet unvisited neighbors of the point with the given coordinates. The yielded points are
          * unvisited neighbors within the boundaries of the grid.
          *
-         * @param {number} _x the x-coordinate of the point
-         * @param {number} _y the y-coordinate of the point
+         * @param {number} x the x-coordinate of the point
+         * @param {number} y the y-coordinate of the point
          */
-        const unvisitedNeighbors = function* ([_x, _y]) {
-            const xValues = [_x + space, _x - space].filter(isWithinHorizontalBounds);
-            xValues.push(_x);
-            const yValues = [_y + space, _y - space].filter(isWithinVerticalBounds);
-            yValues.push(_y);
+        const unvisitedNeighbors = function* ([x, y]) {
+            const xValues = [x + space, x - space].filter(isWithinHorizontalBounds);
+            xValues.push(x);
+            const yValues = [y + space, y - space].filter(isWithinVerticalBounds);
+            yValues.push(y);
 
-            for (const xVal of xValues) {
-                for (const yVal of yValues) {
-                    if (hasNotBeenVisited(xVal, yVal)) { // also eliminates [_x, _y] because it has been visited before
-                        yield [xVal, yVal];
+            for (const _x of xValues) {
+                for (const _y of yValues) {
+                    const neighbor = [_x, _y];
+                    if (hasNotBeenVisited(neighbor)) { // also eliminates [x, y] because it has been visited before
+                        yield neighbor;
                     }
                 }
             }
         };
 
         // The list of points yet to be visited.
-        const pending = [[x, y]];
+        const pending = [start];
+
+        const markPending = function ([x, y]) {
+            for (const [_x, _y] of pending) {
+                if (_x === x && _y === y) {
+                    return; // already marked pending
+                }
+            }
+
+            pending.push([x, y]);
+        };
 
         // As long as there are still unvisited points, yield these points, mark them as visited and mark their
         // unvisited neighbors as pending.
-        while (pending.length !== 0) {
-            const next = pending.pop();
+        for (const next of pending) {
             markVisited(next);
-            pending.push(...unvisitedNeighbors(next));
+            for (const neighbor of unvisitedNeighbors(next)) {
+                markPending(neighbor);
+            }
             yield next;
         }
     };
