@@ -659,40 +659,84 @@ const getCachedFalseDistance = function (distanceValues) {
     }
 };
 
+/**
+ * Specialization of sets for intended for managing points (pairs of numbers only) on a two-dimensional integer grid.
+ * Duplicate elimination is performed by checking structural equality rather than referential equality. This
+ * means, two pairs of numbers `p1 = [x1,y1]` and `p2 = [x2,y2]` are considered equal iff `x1 === x2` and `y1 === y2`
+ * rather than checking if the references point to the same object in memory (`p1 === p2`).
+ */
 class PointSet {
+
+    /**
+     * Constructs a new set. It manages points on an a two-dimensional integer grid where each point has a distance of
+     * `space` to its neighbor in vertical or horizontal direction. The size of the grid is limited on the horizontal
+     * axis by the coordinates `left` and `right`. The given x-coordinate `startX` denotes the root/center of the grid
+     * on the horizontal axis. The center of the grid need not be the center between the two boundary points.
+     *
+     * @param {[number]} startX x-coordinate of the center point
+     * @param {{left: number, right: number}} boundaries of the grid on the horizontal axis
+     * @param {number} space space between two neighbor points in x- or y-direction
+     */
     constructor ([startX], {left, right}, space) {
         this._workingSet = new Set();
         this._xSamples = Math.floor((startX - left) / space) + Math.floor((right - startX) / space) + 1;
     }
 
     _serialize ([x, y]) {
+        // JavaScript Sets use reference equality for objects, and value equality for primitive types. We want to manage
+        // pairs of whole numbers in terms of value equality, so we have to define a canonical enumeration for pairs of
+        // numbers, and identify a pair by its unique number in the enumeration.
         return (x * this._xSamples) + y;
     }
 
-    _deserialize (number) {
-        const x = Math.trunc(number / this._xSamples);
-        const y = number % this._xSamples;
-        return [x, y];
-    }
-
+    /**
+     * Adds the given point to the set.
+     *
+     * @param {[number, number]} point the point to add
+     */
     add (point) {
         this._workingSet.add(this._serialize(point));
     }
 
+    /**
+     * Tells whether the given point is contained in the set.
+     *
+     * @param {[number, number]} point the point to check
+     * @return {boolean} `true` iff the `point` is contained in the set
+     */
     has (point) {
         return this._workingSet.has(this._serialize(point));
     }
-
-
 }
 
-class IterablePointSet {
+/**
+ * A hybrid of sets and queues intended for managing points (pairs of numbers only) on a two-dimensional integer grid.
+ * In contrast to the functionality offered by `PointSet`, this class allows one to `push` new points to the queue, and
+ * retrieve points in the insertion order using `shift`.
+ */
+class QueueablePointSet {
+
+    /**
+     * Constructs a new set. It manages points on an a two-dimensional integer grid where each point has a distance of
+     * `space` to its neighbor in vertical or horizontal direction. The size of the grid is limited on the horizontal
+     * axis by the coordinates `left` and `right`. The given x-coordinate `start` denotes the root/center of the grid
+     * on the horizontal axis. The center of the grid need not be the center between the two boundary points.
+     *
+     * @param {[number]} start x-coordinate of the center point
+     * @param {{left: number, right: number}} bounds of the grid on the horizontal axis
+     * @param {number} space space between two neighbor points in x- or y-direction
+     */
     constructor (start, bounds, space) {
         this._backingArray = [];
         this._pointSet = new PointSet(start, bounds, space);
         this.push(start);
     }
 
+    /**
+     * Adds the given points to the end of the queue, unless a point is already present in the queue.
+     *
+     * @param {[number, number]} points the points to add
+     */
     push (...points) {
         for (const point of points) {
             if (this._pointSet.has(point)) {
@@ -704,10 +748,20 @@ class IterablePointSet {
         }
     }
 
+    /**
+     * Removes and returns the first element from the queue.
+     *
+     * @return {[number, number]} the first element
+     */
     shift () {
         return this._backingArray.shift();
     }
 
+    /**
+     * The length of the queue.
+     *
+     * @return {number} the length
+     */
     get length () {
         return this._backingArray.length;
     }
@@ -835,7 +889,7 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         };
 
         // The list of points yet to be visited.
-        const pending = new IterablePointSet(start, bounds, space);
+        const pending = new QueueablePointSet(start, bounds, space);
 
         // As long as there are still unvisited points, yield these points, mark them as visited and mark their
         // unvisited neighbors as pending.
