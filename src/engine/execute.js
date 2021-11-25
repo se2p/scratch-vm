@@ -826,7 +826,8 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
 
         // As long as there are still unvisited points, yield these points, mark them as visited and mark their
         // unvisited neighbors as pending.
-        for (const next of pending) {
+        while (pending.length !== 0) {
+            const next = pending.pop();
             markVisited(next);
             for (const neighbor of unvisitedNeighbors(next)) {
                 markPending(neighbor);
