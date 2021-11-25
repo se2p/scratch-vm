@@ -22,7 +22,6 @@ class Trace {
         delete this.argValues.mutation;
         this.fields = block.fields;
         this.distances = [...block._distances];
-        this.remainingScaledHaltingDuration = block.utility.getScaledRemainingHaltingTime();
 
         this.updateTargets(targets);
     }
@@ -79,8 +78,6 @@ class Tracer {
         this.coverage = new Set();
         this.targets = [];
         this.lastTraced = null;
-        this.timeDependentBlocks = ['control_wait', 'looks_thinkforsecs', 'looks_sayforsecs', 'motion_glidesecstoxy',
-            'sound_playuntildone', 'text2speech_speakAndWait'];
     }
 
     /**
@@ -92,8 +89,7 @@ class Tracer {
      */
     _filterBlock (block) {
 
-        if ((!this.timeDependentBlocks.includes(block.opcode)) &&
-            (!block._distances || block._distances.length === 0 || !block._distances[0])) {
+        if (!block._distances || block._distances.length === 0 || !block._distances[0]) {
             return false;
         }
 
@@ -102,18 +98,6 @@ class Tracer {
             case 'data_variable': // These occur due to displaying a variable's value
             case 'data_listcontents': // These occur due to displaying list monitor
                 return false;
-            case 'motion_glideto':
-            case 'motion_glidesecstoxy':
-                if (this.lastTraced.id === block.id) {
-                    this.lastTraced.updateTargets(this.targets);
-                    return false;
-                }
-                break;
-            case 'control_wait':
-                if (this.lastTraced.id === block.id) {
-                    return false;
-                }
-                break;
             }
         }
         return true;
