@@ -659,6 +659,59 @@ const getCachedFalseDistance = function (distanceValues) {
     }
 };
 
+class PointSet {
+    constructor ([startX], {left, right}, space) {
+        this._workingSet = new Set();
+        this._xSamples = Math.floor((startX - left) / space) + Math.floor((right - startX) / space) + 1;
+    }
+
+    _serialize ([x, y]) {
+        return (x * this._xSamples) + y;
+    }
+
+    _deserialize (number) {
+        const x = Math.trunc(number / this._xSamples);
+        const y = number % this._xSamples;
+        return [x, y];
+    }
+
+    add (point) {
+        this._workingSet.add(this._serialize(point));
+    }
+
+    has (point) {
+        return this._workingSet.has(this._serialize(point));
+    }
+
+
+}
+
+class IterablePointSet {
+    constructor (start, bounds, space) {
+        this._backingArray = [];
+        this._pointSet = new PointSet(start, bounds, space);
+        this.push(start);
+    }
+
+    push (...points) {
+        for (const point of points) {
+            if (this._pointSet.has(point)) {
+                continue;
+            }
+
+            this._backingArray.push(point);
+            this._pointSet.add(point);
+        }
+    }
+
+    shift () {
+        return this._backingArray.shift();
+    }
+
+    get length () {
+        return this._backingArray.length;
+    }
+}
 
 let sensing = undefined;
 
@@ -730,6 +783,9 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
      * @param {number} space the distance between two neighbors
      */
     const points = function *(start, bounds, space = 10) {
+        // For the workings of the algorithm it is important to only consider whole numbers.
+        start = start.map(Math.trunc);
+
         const {left, right, top, bottom} = bounds;
 
         /**
@@ -752,41 +808,8 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
             return bottom <= y && y <= top;
         };
 
-        // Array of already visited points on the grid.
-        const visited = [];
-
-        /**
-         * Tells whether the point with the given coordinates has already been visited.
-         *
-         * @param {number} x the x-coordinate of the point
-         * @param {number} y the y-coordinate of the point
-         * @return {boolean} true iff the point has not been visited yet
-         */
-        const hasNotBeenVisited = function ([x, y]) {
-            for (const [_x, _y] of visited) {
-                if (_x === x && _y === y) {
-                    return false;
-                }
-            }
-
-            return true;
-        };
-
-        /**
-         * Marks the point with the given coordinates as visited.
-         *
-         * @param {number} x the x-coordinate of the point
-         * @param {number }y the y-coordinate of the point
-         */
-        const markVisited = function ([x, y]) {
-            for (const [_x, _y] of visited) {
-                if (_x === x && _y === y) {
-                    return; // already marked visited
-                }
-            }
-
-            visited.push([x, y]);
-        };
+        // Set of already visited points on the grid.
+        const visited = new PointSet(start, bounds, space);
 
         /**
          * Generates all yet unvisited neighbors of the point with the given coordinates. The yielded points are
@@ -804,7 +827,7 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
             for (const _x of xValues) {
                 for (const _y of yValues) {
                     const neighbor = [_x, _y];
-                    if (hasNotBeenVisited(neighbor)) { // also eliminates [x, y] because it has been visited before
+                    if (!visited.has(neighbor)) { // also eliminates [x, y] because it has been visited before
                         yield neighbor;
                     }
                 }
@@ -812,26 +835,14 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         };
 
         // The list of points yet to be visited.
-        const pending = [start];
-
-        const markPending = function ([x, y]) {
-            for (const [_x, _y] of pending) {
-                if (_x === x && _y === y) {
-                    return; // already marked pending
-                }
-            }
-
-            pending.push([x, y]);
-        };
+        const pending = new IterablePointSet(start, bounds, space);
 
         // As long as there are still unvisited points, yield these points, mark them as visited and mark their
         // unvisited neighbors as pending.
         while (pending.length !== 0) {
-            const next = pending.pop();
-            markVisited(next);
-            for (const neighbor of unvisitedNeighbors(next)) {
-                markPending(neighbor);
-            }
+            const next = pending.shift();
+            visited.add(next);
+            pending.push(...unvisitedNeighbors(next));
             yield next;
         }
     };
