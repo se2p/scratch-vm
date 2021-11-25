@@ -20,6 +20,20 @@ const blockUtility = new BlockUtility();
 const blockFunctionProfilerFrame = 'blockFunction';
 
 /**
+ * Holds all timeDependent opcodes.
+ * @type {string[]}
+ */
+const timeDependentOpCodes = ['control_wait', 'looks_thinkforsecs', 'looks_sayforsecs', 'motion_glidesecstoxy',
+    'motion_glideto', 'sound_playuntildone', 'text2speech_speakAndWait'];
+
+/**
+ * Holds all operator opcodes.
+ * @type {string[]}
+ */
+const operatorBlockOpcode = ['operator_lt', 'operator_gt', 'operator_equals', 'operator_and', 'operator_or',
+    'operator_not'];
+
+/**
  * Profiler frame ID for 'blockFunction'.
  * @type {number}
  */
@@ -175,6 +189,12 @@ class BlockCached {
          * @type {string}
          */
         this.opcode = cached.opcode;
+
+        /**
+         * Specifies whether this block is a time-dependent execution halting block such as a wait block.
+         * @type {boolean}
+         */
+        this.isTimeDependentBlock = false;
 
         /**
          * Original block object containing argument values for static fields.
@@ -401,6 +421,8 @@ class BlockCached {
         if (this._definedBlockFunction) {
             this._ops.push(this);
         }
+
+        this.isTimeDependentBlock = timeDependentOpCodes.includes(this.opcode);
     }
 }
 
@@ -553,7 +575,7 @@ const execute = function (sequencer, thread) {
         // Inputs are set during previous steps in the loop.
 
         const primitiveReportedValue = blockFunction(argValues, blockUtility);
-        const primitiveBranchDistanceValue = branchDistanceValue(blockFunction, argValues, opCached._distances, primitiveReportedValue, runtime, thread.target, blockUtility);
+        const primitiveBranchDistanceValue = branchDistanceValue(blockFunction, argValues, opCached, primitiveReportedValue, runtime, thread.target, blockUtility);
 
         // If it's a promise, wait until promise resolves.
         if (isPromise(primitiveReportedValue)) {
@@ -607,6 +629,10 @@ const execute = function (sequencer, thread) {
                     parentValues[inputName] = primitiveReportedValue;
                 }
             }
+        }
+        // Add branchDistances for time-dependent execution halting blocks.
+        else if (timeDependentOpCodes.includes(opCached.opcode)){
+            opCached._distances[0] = primitiveBranchDistanceValue;
         }
     }
 
@@ -769,19 +795,40 @@ class QueueablePointSet {
 
 let sensing = undefined;
 
-branchDistanceValue = function (blockFunction, argValues, distanceValues, primitiveReportedValue, runtime, threadTarget, blockUtility) {
+const branchDistanceValue = function (blockFunction, argValues, opCached, primitiveReportedValue, runtime, threadTarget, blockUtility) {
     if (sensing === undefined || sensing.runtime !== runtime) {
         sensing = new Sensing(runtime);
     }
 
-    const name = blockFunction.name;
-    const shortname = name.replace('bound ', '');
+    // Special treatment for text2speech block since we may still have to wait for the response containing the
+    // translated text and duration.
+    if (opCached.opcode === 'text2speech_speakAndWait') {
+        const remainingDuration = blockUtility.getScaledRemainingHaltingTime();
+        if (remainingDuration === 0) {
+            return [0, 1];
+        } else if (remainingDuration === null){
+            return [1, 0];
+        } else{
+            return [blockUtility.getScaledRemainingHaltingTime(), 0];
+        }
+    }
 
-    if (shortname === 'forever') {
+    // Add branchDistances for time-dependent execution halting blocks.
+    if (timeDependentOpCodes.includes(opCached.opcode)){
+        const remainingDuration = blockUtility.getScaledRemainingHaltingTime();
+        if(remainingDuration === 0){
+            return [0, 1];
+        }
+        else{
+            return [blockUtility.getScaledRemainingHaltingTime(), 0];
+        }
+    }
+
+    if (opCached.opcode === 'control_forever') {
         return [0, 1];
     }
 
-    if (shortname === 'repeat') {
+    if (opCached.opcode === 'control_repeat') {
         // Get total number of iterations as fallback
         let times = Math.round(cast.toNumber(argValues.TIMES));
         if (blockUtility.thread.stackFrames.length > 0 &&
@@ -797,7 +844,7 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         }
     }
 
-    if (shortname === 'getKeyPressed') {
+    if (opCached.opcode === 'sensing_keypressed') {
         if (primitiveReportedValue === true) {
             return [0, 1];
         } else {
@@ -805,7 +852,7 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         }
     }
 
-    if (shortname === 'getMouseDown') {
+    if (opCached.opcode === 'sensing_mousedown') {
         if (primitiveReportedValue === true) {
             return [0, 1];
         } else {
@@ -969,7 +1016,7 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         return distance;
     };
 
-    if (shortname === 'touchingColor') {
+    if (opCached.opcode === 'sensing_touchingcolor') {
         const touchingColor = sensing.getPrimitives().sensing_touchingcolor.bind(sensing);
 
         if (touchingColor(argValues, blockUtility)) {
@@ -979,7 +1026,7 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         return handleTouchingColorFalse(argValues.COLOR);
     }
 
-    if (shortname === 'colorTouchingColor') { // https://en.scratch-wiki.info/wiki/Color_()_is_Touching_()%3F_(block)
+    if (opCached.opcode === 'sensing_coloristouchingcolor') { // https://en.scratch-wiki.info/wiki/Color_()_is_Touching_()%3F_(block)
         const colorTouchingColor = sensing.getPrimitives().sensing_coloristouchingcolor.bind(sensing);
 
         // The first color of the 'colorTouchingColor' block. This color must be present in the current costume of the
@@ -1018,7 +1065,7 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         return handleTouchingColorFalse(color2, result.coordinates);
     }
 
-    if (shortname === 'touchingObject') {
+    if (opCached.opcode === 'sensing_touchingobject') {
         dist_args = {};
         dist_args.DISTANCETOMENU = argValues.TOUCHINGOBJECTMENU;
 
@@ -1047,13 +1094,13 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
         }
     }
 
-    if (['lt', 'gt', 'equals', 'and', 'or', 'not'].indexOf(shortname) < 0 && distanceValues) {
+    if (!operatorBlockOpcode.includes(opCached.opcode) && opCached._distances) {
         // unsupported operation
         // by default just reuse the previous value
-        return distanceValues[0];
+        return opCached._distances[0];
     }
 
-    if (!argValues && ['and', 'or'].indexOf(shortname) >= 0) {
+    if (!argValues && ['operator_and', 'operator_or'].includes(opCached.opcode)) {
         // Something has gone wrong, cannot calculate distance
         return null;
     }
@@ -1062,16 +1109,17 @@ branchDistanceValue = function (blockFunction, argValues, distanceValues, primit
     let second;
     let td;
     let fd;
+    const name = blockFunction.name;
     if ((isNaN(argValues.OPERAND1) || isNaN(argValues.OPERAND2))) {
         first = cast.toString(argValues.OPERAND1);
         second = cast.toString(argValues.OPERAND2);
-        td = getTrueDistanceString(name, first, second, distanceValues);
-        fd = getFalseDistanceString(name, first, second, distanceValues);
+        td = getTrueDistanceString(name, first, second, opCached._distances);
+        fd = getFalseDistanceString(name, first, second, opCached._distances);
     } else {
         first = cast.toNumber(argValues.OPERAND1);
         second = cast.toNumber(argValues.OPERAND2);
-        td = getTrueDistanceNum(name, first, second, distanceValues);
-        fd = getFalseDistanceNum(name, first, second, distanceValues);
+        td = getTrueDistanceNum(name, first, second, opCached._distances);
+        fd = getFalseDistanceNum(name, first, second, opCached._distances);
     }
 
 
