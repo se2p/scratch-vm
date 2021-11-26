@@ -177,7 +177,7 @@ const handlePromise = (primitiveReportedValue, sequencer, thread, blockCached, l
  * @param {object} cached default set of cached values
  */
 class BlockCached {
-    constructor (blockContainer, cached) {
+    constructor(blockContainer, cached) {
         /**
          * Block id in its parent set of blocks.
          * @type {string}
@@ -685,6 +685,79 @@ const getCachedFalseDistance = function (distanceValues) {
     }
 };
 
+/**
+ * Specialization of sets intended for managing coordinates of points (pairs of whole numbers) on a two-dimensional
+ * integer grid. Duplicate elimination is performed by checking structural equality rather than referential equality.
+ * This means, two pairs of numbers `p1 = [x1,y1]` and `p2 = [x2,y2]` are considered equal iff `x1 === x2` and
+ * `y1 === y2` rather than checking if the references point to the same object in memory (`p1 === p2`).
+ */
+class PointQueueSet {
+
+    /**
+     * Constructs a new set. It manages points on an a two-dimensional integer grid with the given boundaries.
+     *
+     * @param {{left: number, right: number, top: number, bottom: number}} boundaries boundaries of the grid
+     */
+    constructor (boundaries) {
+        const left = Math.trunc(boundaries.left);
+        const right = Math.trunc(boundaries.right);
+        this._width = right - left;
+        this._offsetX = left;
+        this._offsetY = Math.trunc(boundaries.bottom);
+        this._workingSet = new Set();
+    }
+
+    _serialize ([x, y]) {
+        // JavaScript Sets use reference equality for objects, and value equality for primitive types. We want to manage
+        // pairs of whole numbers in terms of value equality, so we have to define a canonical enumeration for pairs of
+        // numbers, and identify a pair by its unique number in the enumeration.
+        return ((x - this._offsetX) * this._width) + (y - this._offsetY);
+    }
+
+    _deserialize (n) {
+        const x = Math.trunc(n / this._width) + this._offsetX;
+        const y = (n % this._width) + this._offsetY;
+        return [x, y];
+    }
+
+    /**
+     * Adds the given points to the end of the queue, unless a point is already present in the queue.
+     *
+     * @param {[number, number]} points the points to add
+     */
+    push (...points) {
+        for (const point of points) {
+            this._workingSet.add(this._serialize(point));
+        }
+    }
+
+    /**
+     * Tells whether the given point is contained in the set.
+     *
+     * @param {[number, number]} point the point to check
+     * @return {boolean} `true` iff the `point` is contained in the set
+     */
+    has (point) {
+        return this._workingSet.has(this._serialize(point));
+    }
+
+    [Symbol.iterator] () {
+        const iter = this._workingSet[Symbol.iterator]();
+        const outer = this;
+        return {
+            next: function () {
+                const {done, value} = iter.next();
+
+                return done ? {
+                    done
+                } : {
+                    done,
+                    value: outer._deserialize(value)
+                };
+            }
+        };
+    }
+}
 
 let sensing = undefined;
 
@@ -767,88 +840,113 @@ const branchDistanceValue = function (blockFunction, argValues, opCached, primit
     );
 
     /**
-     * Creates the list of Fibonacci numbers constructed from the given two numbers "current" and "next", and uses the
-     * given "bound" (inclusive) as the highest number in the list.
+     * Starting at a given point with coordinates x and y, generates a set of points on the Cartesian grid delimited by
+     * the given boundaries left, right, top, and bottom. Every point is equidistant (evenly-spaced) to its neighbor.
+     * The generator first returns the starting point, followed by its neighbors, the neighbors' neighbors, and so on.
+     * Every point on the grid is returned only once, and no out-of-bounds points are returned.
      *
-     * @param {number} bound the upper bound
-     * @param {number} current the first number (by default, 1)
-     * @param {number} next the second number (by default, 2)
-     * @return {number[]} the list of Fibonacci numbers
+     * @param {[number, number]} start the coordinates of the start point
+     * @param {{left: number, right: number, top: number, bottom: number}} bounds the boundaries of the grid
+     * @param {number} space the distance between two neighbors
      */
-    const fibs = function (bound, current = 1, next = 2) {
-        const numbers = [];
-        while (current < bound) {
-            numbers.push(current);
-            [current, next] = [next, current + next];
+    const points = function *(start, bounds, space = 10) {
+        const {left, right, top, bottom} = bounds;
+
+        /**
+         * Tells whether the given x-coordinate is within the bounds.
+         *
+         * @param {number} x the coordinate
+         * @return {boolean} true iff within bounds
+         */
+        const isWithinHorizontalBounds = function (x) {
+            return left <= x && x <= right;
+        };
+
+        /**
+         * Tells whether the given y-coordinate is within the bounds.
+         *
+         * @param {number} y the coordinate
+         * @return {boolean} true iff within bounds
+         */
+        const isWithinVerticalBounds = function (y) {
+            return bottom <= y && y <= top;
+        };
+
+        // Set of already visited points on the grid.
+        const visited = new PointQueueSet(bounds);
+
+        /**
+         * Generates all yet unvisited neighbors of the point with the given coordinates. The yielded points are
+         * unvisited neighbors within the boundaries of the grid.
+         *
+         * @param {number} x the x-coordinate of the point
+         * @param {number} y the y-coordinate of the point
+         */
+        const unvisitedNeighbors = function* ([x, y]) {
+            const xValues = [x + space, x - space].filter(isWithinHorizontalBounds);
+            xValues.push(x);
+            const yValues = [y + space, y - space].filter(isWithinVerticalBounds);
+            yValues.push(y);
+
+            for (const _x of xValues) {
+                for (const _y of yValues) {
+                    const neighbor = [_x, _y];
+                    if (!visited.has(neighbor)) { // also eliminates [x, y] because it has been visited before
+                        yield neighbor;
+                    }
+                }
+            }
+        };
+
+        // The queue of points yet to be visited.
+        const pending = new PointQueueSet(bounds);
+
+        // Initialize the queue with the start point. For the workings of the algorithm it is important to consider
+        // whole numbers only.
+        pending.push(start.map(Math.trunc));
+
+        // As long as there are still unvisited points, yield these points, mark them as visited and mark their
+        // unvisited neighbors as pending.
+        for (const next of pending) {
+            visited.push(next);
+            pending.push(...unvisitedNeighbors(next));
+            yield next;
         }
-        numbers.push(bound);
-        return numbers;
     };
 
     /**
-     * Creates the range of integral numbers [from, to].
+     * In the given list of touchable objects, tries to find the specified color within the grid defined by the
+     * boundaries, starting at the given point. If the search was successful, the returned object contains the
+     * coordinates where the color was located, and the distance to the color from the start point. If
+     * the color was not found, the distance is assumed to be diameter of the grid.
      *
-     * @param {number} from the lower bound
-     * @param {number} to the upper bound
-     * @return {number[]} the range [from, to].
-     */
-    const range = function (from, to) {
-        const values = [];
-        for (let i = from; i <= to; i++) {
-            values.push(i);
-        }
-        return values;
-    };
-
-    /**
-     * In the given list of touchable objects, tries to find the specified color within the circle given by the center
-     * point and searchRadius. If the search was successful, the returned object contains the coordinates where the
-     * color was located, and the distance to the color from the center of the search circle. If the color was not
-     * found, the distance is assumed to be the search radius.
-     *
-     * @param {number} searchRadius the search radius
      * @param {{number, Drawable}[]} touchables array of touchable objects to search in
      * @param {string} color the color to search for in "#RRGGBB" hex format
-     * @param {[number, number]} center the center of the search circle
+     * @param {[number, number]} start the center of the search circle
+     * @param {{left: number, right: number, top: number, bottom: number}} bounds the boundaries of the grid
      * @return {{distance: [number, number], colorFound: boolean, coordinates: [number, number]}} the search result
      */
-    const fuzzyFindColor = function (searchRadius, touchables, color, center = [threadTarget.x, threadTarget.y]) {
-        const [centerX, centerY] = center;
+    const fuzzyFindColor = function (touchables, color, start = [threadTarget.x, threadTarget.y], bounds) {
         const targetColor = cast.toRgbColorList(color);
 
-        // We look for the color in ever increasing circles around the search center.
-        for (const r of fibs(searchRadius)) {
-            const coordinates = [];
-
-            for (const y of [centerY - r, centerY + r]) {
-                for (const x of range(centerX - r, centerX + r)) {
-                    coordinates.push([x, y]);
-                }
-            }
-
-            for (const x of [centerX - r, centerX + r]) {
-                for (const y of range(centerY - r, centerY + r)) {
-                    coordinates.push([x, y]);
-                }
-            }
-
-            // Check if the color is located at the current pixel.
-            for (const [x, y] of coordinates) {
-                const point = twgl.v3.create(x, y);
-                const currentColor = threadTarget.renderer.constructor.sampleColor3b(point, touchables);
-                if (colorMatches(targetColor, currentColor)) {
-                    return {
-                        distance: [Math.hypot(centerX - x, centerY - y), 0],
-                        colorFound: true,
-                        coordinates: [x, y]
-                    };
-                }
+        for (const [x, y] of points(start, bounds)) {
+            const point = twgl.v3.create(x, y);
+            const currentColor = threadTarget.renderer.constructor.sampleColor3b(point, touchables);
+            if (colorMatches(targetColor, currentColor)) {
+                const distanceToColor = Math.hypot(start[0] - x, start[1] - y);
+                return {
+                    distance: [distanceToColor, 0],
+                    colorFound: true,
+                    coordinates: [x, y]
+                };
             }
         }
 
+        const gridDiameter = Math.hypot(bounds.top - bounds.bottom, bounds.right - bounds.left);
         return {
-            distance: [searchRadius, 0],
-            colorFound: false
+            distance: [gridDiameter, 0],
+            colorFound: false,
+            coordinates: []
         };
     };
 
@@ -863,13 +961,9 @@ const branchDistanceValue = function (blockFunction, argValues, opCached, primit
     const handleTouchingColorFalse = function (color, center = [threadTarget.x, threadTarget.y]) {
         const renderer = threadTarget.renderer;
 
-        const width = renderer._xRight - renderer._xLeft;
-        const height = renderer._yTop - renderer._yBottom;
-        const stageDiameter = Math.hypot(width, height);
-
         // Constructs a list of touchable objects excluding the current sprite itself.
         const touchables = [];
-        for (let index = renderer._visibleDrawList.length - 1; index >= 0; index--){
+        for (let index = renderer._visibleDrawList.length - 1; index >= 0; index--) {
             const id = renderer._visibleDrawList[index];
             if (id !== threadTarget.drawableID) {
                 const drawable = renderer._allDrawables[id];
@@ -877,7 +971,14 @@ const branchDistanceValue = function (blockFunction, argValues, opCached, primit
             }
         }
 
-        const {distance} = fuzzyFindColor(stageDiameter, touchables, color, center);
+        const stageBounds = {
+            right: renderer._xRight,
+            left: renderer._xLeft,
+            top: renderer._yTop,
+            bottom: renderer._yBottom
+        };
+
+        const {distance} = fuzzyFindColor(touchables, color, center, stageBounds);
         return distance;
     };
 
@@ -907,10 +1008,8 @@ const branchDistanceValue = function (blockFunction, argValues, opCached, primit
         }
 
         // The sprite does not touch color2 yet. We have to check if the current costume of the sprite contains color1.
-        // To this, we compute the geometry of the current costume, and use this as search area for color1.
-        const [costumeSizeX, costumeSizeY] = threadTarget.sprite.costumes[threadTarget.currentCostume].size;
-        const scalingFactor = threadTarget.size / 100;
-        const searchRadius = Math.max(costumeSizeX, costumeSizeY) * scalingFactor / 2;
+        // To this, we retrieve the geometry of the current costume, and use this as search area for color1.
+        const spriteBounds = threadTarget.getBounds();
 
         // The current sprite represented as Drawable object.
         const id = threadTarget.drawableID;
@@ -919,7 +1018,7 @@ const branchDistanceValue = function (blockFunction, argValues, opCached, primit
 
         // Search for color1 within the current costume of the sprite.
         drawable.updateCPURenderAttributes(); // Necessary, otherwise color sampling does not work.
-        const result = fuzzyFindColor(searchRadius, thisSprite, color1);
+        const result = fuzzyFindColor(thisSprite, color1, [threadTarget.x, threadTarget.y], spriteBounds);
 
         // If color1 is not present in the costume, the 'colorTouchingColor' block always reports false.
         if (!result.colorFound) {
