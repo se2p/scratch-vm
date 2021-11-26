@@ -686,42 +686,49 @@ const getCachedFalseDistance = function (distanceValues) {
 };
 
 /**
- * Specialization of sets for intended for managing points (pairs of numbers only) on a two-dimensional integer grid.
- * Duplicate elimination is performed by checking structural equality rather than referential equality. This
- * means, two pairs of numbers `p1 = [x1,y1]` and `p2 = [x2,y2]` are considered equal iff `x1 === x2` and `y1 === y2`
- * rather than checking if the references point to the same object in memory (`p1 === p2`).
+ * Specialization of sets intended for managing coordinates of points (pairs of whole numbers) on a two-dimensional
+ * integer grid. Duplicate elimination is performed by checking structural equality rather than referential equality.
+ * This means, two pairs of numbers `p1 = [x1,y1]` and `p2 = [x2,y2]` are considered equal iff `x1 === x2` and
+ * `y1 === y2` rather than checking if the references point to the same object in memory (`p1 === p2`).
  */
-class PointSet {
+class PointQueueSet {
 
     /**
-     * Constructs a new set. It manages points on an a two-dimensional integer grid where each point has a distance of
-     * `space` to its neighbor in vertical or horizontal direction. The size of the grid is limited on the horizontal
-     * axis by the coordinates `left` and `right`. The given x-coordinate `startX` denotes the root/center of the grid
-     * on the horizontal axis. The center of the grid need not be the center between the two boundary points.
+     * Constructs a new set. It manages points on an a two-dimensional integer grid with the given boundaries.
      *
-     * @param {[number]} startX x-coordinate of the center point
-     * @param {{left: number, right: number}} boundaries of the grid on the horizontal axis
-     * @param {number} space space between two neighbor points in x- or y-direction
+     * @param {{left: number, right: number, top: number, bottom: number}} boundaries boundaries of the grid
      */
-    constructor ([startX], {left, right}, space) {
+    constructor (boundaries) {
+        const left = Math.trunc(boundaries.left);
+        const right = Math.trunc(boundaries.right);
+        this._width = right - left;
+        this._offsetX = left;
+        this._offsetY = Math.trunc(boundaries.bottom);
         this._workingSet = new Set();
-        this._xSamples = Math.floor((startX - left) / space) + Math.floor((right - startX) / space) + 1;
     }
 
     _serialize ([x, y]) {
         // JavaScript Sets use reference equality for objects, and value equality for primitive types. We want to manage
         // pairs of whole numbers in terms of value equality, so we have to define a canonical enumeration for pairs of
         // numbers, and identify a pair by its unique number in the enumeration.
-        return (x * this._xSamples) + y;
+        return ((x - this._offsetX) * this._width) + (y - this._offsetY);
+    }
+
+    _deserialize (n) {
+        const x = Math.trunc(n / this._width) + this._offsetX;
+        const y = (n % this._width) + this._offsetY;
+        return [x, y];
     }
 
     /**
-     * Adds the given point to the set.
+     * Adds the given points to the end of the queue, unless a point is already present in the queue.
      *
-     * @param {[number, number]} point the point to add
+     * @param {[number, number]} points the points to add
      */
-    add (point) {
-        this._workingSet.add(this._serialize(point));
+    push (...points) {
+        for (const point of points) {
+            this._workingSet.add(this._serialize(point));
+        }
     }
 
     /**
@@ -733,63 +740,22 @@ class PointSet {
     has (point) {
         return this._workingSet.has(this._serialize(point));
     }
-}
 
-/**
- * A hybrid of sets and queues intended for managing points (pairs of numbers only) on a two-dimensional integer grid.
- * In contrast to the functionality offered by `PointSet`, this class allows one to `push` new points to the queue, and
- * retrieve points in the insertion order using `shift`.
- */
-class QueueablePointSet {
+    [Symbol.iterator] () {
+        const iter = this._workingSet[Symbol.iterator]();
+        const outer = this;
+        return {
+            next: function () {
+                const {done, value} = iter.next();
 
-    /**
-     * Constructs a new set. It manages points on an a two-dimensional integer grid where each point has a distance of
-     * `space` to its neighbor in vertical or horizontal direction. The size of the grid is limited on the horizontal
-     * axis by the coordinates `left` and `right`. The given x-coordinate `start` denotes the root/center of the grid
-     * on the horizontal axis. The center of the grid need not be the center between the two boundary points.
-     *
-     * @param {[number]} start x-coordinate of the center point
-     * @param {{left: number, right: number}} bounds of the grid on the horizontal axis
-     * @param {number} space space between two neighbor points in x- or y-direction
-     */
-    constructor (start, bounds, space) {
-        this._backingArray = [];
-        this._pointSet = new PointSet(start, bounds, space);
-        this.push(start);
-    }
-
-    /**
-     * Adds the given points to the end of the queue, unless a point is already present in the queue.
-     *
-     * @param {[number, number]} points the points to add
-     */
-    push (...points) {
-        for (const point of points) {
-            if (this._pointSet.has(point)) {
-                continue;
+                return done ? {
+                    done
+                } : {
+                    done,
+                    value: outer._deserialize(value)
+                };
             }
-
-            this._backingArray.push(point);
-            this._pointSet.add(point);
-        }
-    }
-
-    /**
-     * Removes and returns the first element from the queue.
-     *
-     * @return {[number, number]} the first element
-     */
-    shift () {
-        return this._backingArray.shift();
-    }
-
-    /**
-     * The length of the queue.
-     *
-     * @return {number} the length
-     */
-    get length () {
-        return this._backingArray.length;
+        };
     }
 }
 
@@ -884,9 +850,6 @@ const branchDistanceValue = function (blockFunction, argValues, opCached, primit
      * @param {number} space the distance between two neighbors
      */
     const points = function *(start, bounds, space = 10) {
-        // For the workings of the algorithm it is important to only consider whole numbers.
-        start = start.map(Math.trunc);
-
         const {left, right, top, bottom} = bounds;
 
         /**
@@ -910,7 +873,7 @@ const branchDistanceValue = function (blockFunction, argValues, opCached, primit
         };
 
         // Set of already visited points on the grid.
-        const visited = new PointSet(start, bounds, space);
+        const visited = new PointQueueSet(bounds);
 
         /**
          * Generates all yet unvisited neighbors of the point with the given coordinates. The yielded points are
@@ -935,14 +898,17 @@ const branchDistanceValue = function (blockFunction, argValues, opCached, primit
             }
         };
 
-        // The list of points yet to be visited.
-        const pending = new QueueablePointSet(start, bounds, space);
+        // The queue of points yet to be visited.
+        const pending = new PointQueueSet(bounds);
+
+        // Initialize the queue with the start point. For the workings of the algorithm it is important to consider
+        // whole numbers only.
+        pending.push(start.map(Math.trunc));
 
         // As long as there are still unvisited points, yield these points, mark them as visited and mark their
         // unvisited neighbors as pending.
-        while (pending.length !== 0) {
-            const next = pending.shift();
-            visited.add(next);
+        for (const next of pending) {
+            visited.push(next);
             pending.push(...unvisitedNeighbors(next));
             yield next;
         }
