@@ -876,26 +876,29 @@ const branchDistanceValue = function (blockFunction, argValues, opCached, primit
         const visited = new PointQueueSet(bounds);
 
         /**
-         * Generates all yet unvisited neighbors of the point with the given coordinates. The yielded points are
-         * unvisited neighbors within the boundaries of the grid.
+         * Returns all yet unvisited neighbors of the point with the given coordinates. The returned points are
+         * within the boundaries of the grid, and will also be marked as visited.
          *
          * @param {number} x the x-coordinate of the point
          * @param {number} y the y-coordinate of the point
+         * @return {[number, number][]} unvisited neighbors of the point
          */
-        const unvisitedNeighbors = function* ([x, y]) {
-            const xValues = [x + space, x - space].filter(isWithinHorizontalBounds);
-            xValues.push(x);
-            const yValues = [y + space, y - space].filter(isWithinVerticalBounds);
-            yValues.push(y);
+        const unvisitedNeighbors = function ([x, y]) {
+            const neighborsX = [x - space, x, x + space].filter(_x => isWithinHorizontalBounds(_x));
+            const neighborsY = [y - space, y, y + space].filter(_y => isWithinVerticalBounds(_y));
+            const neighbors = [];
 
-            for (const _x of xValues) {
-                for (const _y of yValues) {
+            for (const _x of neighborsX) {
+                for (const _y of neighborsY) {
                     const neighbor = [_x, _y];
-                    if (!visited.has(neighbor)) { // also eliminates [x, y] because it has been visited before
-                        yield neighbor;
+                    if (!visited.has(neighbor)) {
+                        visited.push(neighbor);
+                        neighbors.push(neighbor);
                     }
                 }
             }
+
+            return neighbors;
         };
 
         // The queue of points yet to be visited.
@@ -903,12 +906,13 @@ const branchDistanceValue = function (blockFunction, argValues, opCached, primit
 
         // Initialize the queue with the start point. For the workings of the algorithm it is important to consider
         // whole numbers only.
-        pending.push(start.map(Math.trunc));
+        const startPoint = start.map(Math.trunc);
+        pending.push(startPoint);
+        visited.push(startPoint);
 
         // As long as there are still unvisited points, yield these points, mark them as visited and mark their
         // unvisited neighbors as pending.
         for (const next of pending) {
-            visited.push(next);
             pending.push(...unvisitedNeighbors(next));
             yield next;
         }
