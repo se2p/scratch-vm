@@ -932,23 +932,24 @@ const branchDistanceValue = function (blockFunction, argValues, opCached, primit
      */
     const fuzzyFindColor = function (touchables, color, start = [threadTarget.x, threadTarget.y], bounds) {
         const targetColor = cast.toRgbColorList(color);
+        const gridDiameter = Math.hypot(bounds.top - bounds.bottom, bounds.right - bounds.left);
 
         for (const [x, y] of points(start, bounds)) {
             const point = twgl.v3.create(x, y);
             const currentColor = threadTarget.renderer.constructor.sampleColor3b(point, touchables);
             if (colorMatches(targetColor, currentColor)) {
                 const distanceToColor = Math.hypot(start[0] - x, start[1] - y);
+                const normalized = distanceToColor / gridDiameter;
                 return {
-                    distance: [distanceToColor, 0],
+                    distance: [normalized, 0],
                     colorFound: true,
                     coordinates: [x, y]
                 };
             }
         }
 
-        const gridDiameter = Math.hypot(bounds.top - bounds.bottom, bounds.right - bounds.left);
         return {
-            distance: [gridDiameter, 0],
+            distance: [1, 0],
             colorFound: false,
             coordinates: []
         };
