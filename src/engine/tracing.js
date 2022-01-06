@@ -13,7 +13,7 @@ class Trace {
      * @param {Array<Target>} targets - the current state of targets.
      */
     constructor (block, targets) {
-        this.id = block.id;
+        this.id = `${block.id}-${block.utility.target.sprite.name}`;
         this.opcode = block.opcode;
         this.ops = block._ops.filter(op => op.id !== block.id)
             .map(op => new Trace(op, targets));
@@ -110,14 +110,15 @@ class Tracer {
      * @param {BlockCached} block  - the block that is added as a trace.
      */
     traceExecutedBlock (block) {
-        this.coverage.add(block.id);
+        const blockKey = `${block.id}-${block.utility.target.sprite.name}`;
+        this.coverage.add(blockKey);
         if (!this._filterBlock(block)) {
             return;
         }
         const newTrace = new Trace(block, this.targets);
 
-        if (block.id in this.traces && newTrace.distances[0]) {
-            const oldTrace = this.traces[block.id];
+        if (blockKey in this.traces && newTrace.distances[0]) {
+            const oldTrace = this.traces[blockKey];
             const oldTrue = oldTrace.distances[0][0];
             const oldFalse = oldTrace.distances[0][1];
 
@@ -129,7 +130,7 @@ class Tracer {
                 oldTrace.distances[0][1] = newTrace.distances[0][1];
             }
         } else {
-            this.traces[block.id] = newTrace;
+            this.traces[blockKey] = newTrace;
         }
 
         // this.traces.push(newTrace);
