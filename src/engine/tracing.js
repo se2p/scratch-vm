@@ -10,10 +10,11 @@ class Trace {
      * with all required information.
      *
      * @param {BlockCached} block - a Scratch block object.
+     * @param {string} blockKey - the key for the given block following the scheme: id-spriteName
      * @param {Array<Target>} targets - the current state of targets.
      */
-    constructor (block, targets) {
-        this.id = block.id;
+    constructor (block, blockKey, targets) {
+        this.id = blockKey;
         this.opcode = block.opcode;
         this.ops = block._ops.filter(op => op.id !== block.id)
             .map(op => new Trace(op, targets));
@@ -103,6 +104,25 @@ class Tracer {
         return true;
     }
 
+    getTargetsOfBlock (block){
+        const blockTargets = [];
+        for (const target of this.targets) {
+            if (block.id in target.blocks._blocks) {
+                blockTargets.push(target.sprite.name);
+            }
+        }
+        return blockTargets;
+    }
+
+    generateBlockKey (block){
+        let blockTarget = block.utility.target.sprite.name;
+        const foundBlockTargets = this.getTargetsOfBlock(block);
+        if (!foundBlockTargets.includes(blockTarget) && foundBlockTargets.includes('Stage')){
+            blockTarget = 'Stage';
+        }
+        return `${block.id}-${blockTarget}`;
+    }
+
     /**
      * Adds a given block to the trace record iff it is not filtered
      * out by Tracer#_filterBlock.
@@ -110,14 +130,15 @@ class Tracer {
      * @param {BlockCached} block  - the block that is added as a trace.
      */
     traceExecutedBlock (block) {
-        this.coverage.add(block.id);
+        const blockKey = this.generateBlockKey(block);
+        this.coverage.add(blockKey);
         if (!this._filterBlock(block)) {
             return;
         }
-        const newTrace = new Trace(block, this.targets);
+        const newTrace = new Trace(block, blockKey, this.targets);
 
-        if (block.id in this.traces && newTrace.distances[0]) {
-            const oldTrace = this.traces[block.id];
+        if (blockKey in this.traces && newTrace.distances[0]) {
+            const oldTrace = this.traces[blockKey];
             const oldTrue = oldTrace.distances[0][0];
             const oldFalse = oldTrace.distances[0][1];
 
@@ -129,7 +150,7 @@ class Tracer {
                 oldTrace.distances[0][1] = newTrace.distances[0][1];
             }
         } else {
-            this.traces[block.id] = newTrace;
+            this.traces[blockKey] = newTrace;
         }
 
         // this.traces.push(newTrace);
