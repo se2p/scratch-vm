@@ -68,9 +68,7 @@ class Sequencer {
      * @return {Array.<!Thread>} List of inactive threads after stepping.
      */
     stepThreads () {
-        // Work time is 75% of the thread stepping interval.
-        const WORK_TIME = 0.75 * this.runtime.currentStepTime;
-        // For compatibility with Scatch 2, update the millisecond clock
+        // For compatibility with Scratch 2, update the millisecond clock
         // on the Runtime once per step (see Interpreter.as in Scratch 2
         // for original use of `currentMSecs`)
         this.runtime.updateCurrentMSecs();
@@ -81,14 +79,11 @@ class Sequencer {
         // Whether `stepThreads` has run through a full single tick.
         let ranFirstTick = false;
         const doneThreads = [];
-        // Conditions for continuing to stepping threads:
-        // 1. We must have threads in the list, and some must be active.
-        // 2. Time elapsed must be less than WORK_TIME.
-        // 3. Either turbo mode, or no redraw has been requested by a primitive.
-        while (this.runtime.threads.length > 0 &&
-               numActiveThreads > 0 &&
-               this.timer.timeElapsed() < WORK_TIME &&
-               (this.runtime.turboMode || !this.runtime.redrawRequested)) {
+        // The sequencer steps through each thread once if there is at least one active thread and no redraw
+        // has been requested.
+        while (!ranFirstTick && this.runtime.threads.length > 0 &&
+        numActiveThreads > 0 &&
+        (this.runtime.turboMode || !this.runtime.redrawRequested)) {
             if (this.runtime.profiler !== null) {
                 if (stepThreadsInnerProfilerId === -1) {
                     stepThreadsInnerProfilerId = this.runtime.profiler.idByName(stepThreadsInnerProfilerFrame);
