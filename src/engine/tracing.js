@@ -114,12 +114,17 @@ class Tracer {
         return blockTargets;
     }
 
-    generateBlockKey (block){
+    generateBlockKey (block) {
         let blockTarget = block.utility.target.sprite.name;
         const foundBlockTargets = this.getTargetsOfBlock(block);
-        if (!foundBlockTargets.includes(blockTarget) && foundBlockTargets.includes('Stage')){
+        if (!foundBlockTargets.includes(blockTarget) && foundBlockTargets.includes('Stage')) {
             blockTarget = 'Stage';
+        } else if (!foundBlockTargets.includes(blockTarget) && block.opcode === 'control_create_clone_of') {
+            // Make sure the clone block's key is set to the source target in which the block is located and NOT
+            // to the target which is cloned by the block
+            blockTarget = foundBlockTargets;
         }
+
         return `${block.id}-${blockTarget}`;
     }
 
