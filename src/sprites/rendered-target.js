@@ -38,6 +38,12 @@ class RenderedTarget extends Target {
         this.drawableID = null;
 
         /**
+         * A unique ID for clones of a Sprite.
+         * @type {?number}
+         */
+        this.cloneID = null;
+
+        /**
          * Drag state of this rendered target. If true, x/y position can't be
          * changed by blocks.
          * @type {boolean}
