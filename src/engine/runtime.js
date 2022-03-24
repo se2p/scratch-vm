@@ -276,6 +276,12 @@ class Runtime extends EventEmitter {
         this._cloneCounter = 0;
 
         /**
+         * Keeps track of the amount of created clones per sprite.
+         * @type {Object}
+         */
+        this.cloneRecord = {};
+
+        /**
          * Flag to emit a targets update at the end of a step. When target data
          * changes, this flag is set to true.
          * @type {boolean}
