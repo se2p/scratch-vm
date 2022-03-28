@@ -77,6 +77,7 @@ class Tracer {
         // this.traces = [];
         this.traces = {};
         this.coverage = new Set();
+        this.lastStepCoverage = new Set();
         this.targets = [];
         this.lastTraced = null;
     }
@@ -137,6 +138,7 @@ class Tracer {
     traceExecutedBlock (block) {
         const blockKey = this.generateBlockKey(block);
         this.coverage.add(blockKey);
+        this.lastStepCoverage.add(blockKey);
         if (!this._filterBlock(block)) {
             return;
         }
@@ -171,7 +173,8 @@ class Tracer {
     reset (targets) {
         this.targets = targets;
         this.traces = {};
-        this.coverage = new Set();
+        this.coverage.clear();
+        this.lastStepCoverage.clear();
     //    for (const prop of Object.getOwnPropertyNames(this.traces)) {
     //        delete this.traces[prop];
     //    }

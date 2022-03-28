@@ -2077,6 +2077,7 @@ class Runtime extends EventEmitter {
      */
     _step () {
         this.stepsExecuted++;
+        this.traceInfo.tracer.lastStepCoverage.clear();
         if (this.profiler !== null) {
             if (stepProfilerId === -1) {
                 stepProfilerId = this.profiler.idByName('Runtime._step');
