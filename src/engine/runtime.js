@@ -2039,6 +2039,7 @@ class Runtime extends EventEmitter {
         this.stopAll();
         this.emit(Runtime.PROJECT_START);
 
+        this.cloneRecord = {};
         this.traceInfo.reset();
 
         this.ioDevices.clock.resetProjectTimer();
