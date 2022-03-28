@@ -118,7 +118,7 @@ class Sprite {
             this.runtime.fireTargetWasCreated(newClone);
         } else {
             // Subtract 1 since the original is also saved in the clones array.
-            this.runtime.cloneRecord[this.name] = this.clones.length - 1;
+            this.runtime.cloneRecord.set(this.name, this.clones.length - 1);
             this.runtime.fireTargetWasCreated(newClone, this.clones[0]);
         }
         return newClone;

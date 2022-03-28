@@ -170,7 +170,7 @@ class Scratch3ControlBlocks {
             this.runtime.addTarget(newClone);
 
             // Assign a unique cloneID
-            newClone.cloneID = this.runtime.cloneRecord[newClone.sprite.name];
+            newClone.cloneID = this.runtime.cloneRecord.get(newClone.sprite.name);
 
             // Place behind the original target.
             newClone.goBehindOther(cloneTarget);
