@@ -276,6 +276,12 @@ class Runtime extends EventEmitter {
         this._cloneCounter = 0;
 
         /**
+         * Keeps track of the amount of created clones per sprite.
+         * @type {Map}
+         */
+        this.cloneRecord = new Map();
+
+        /**
          * Flag to emit a targets update at the end of a step. When target data
          * changes, this flag is set to true.
          * @type {boolean}
@@ -2033,6 +2039,7 @@ class Runtime extends EventEmitter {
         this.stopAll();
         this.emit(Runtime.PROJECT_START);
 
+        this.cloneRecord = new Map();
         this.traceInfo.reset();
 
         this.ioDevices.clock.resetProjectTimer();
