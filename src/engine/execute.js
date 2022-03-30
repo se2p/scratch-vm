@@ -849,7 +849,7 @@ const branchDistanceValue = function (blockFunction, argValues, opCached, primit
      * @param {{left: number, right: number, top: number, bottom: number}} bounds the boundaries of the grid
      * @param {number} space the distance between two neighbors
      */
-    const points = function *(start, bounds, space = 10) {
+    const points = function *(start, bounds, space) {
         const {left, right, top, bottom} = bounds;
 
         /**
@@ -934,7 +934,20 @@ const branchDistanceValue = function (blockFunction, argValues, opCached, primit
         const targetColor = cast.toRgbColorList(color);
         const gridDiameter = Math.hypot(bounds.top - bounds.bottom, bounds.right - bounds.left);
 
-        for (const [x, y] of points(start, bounds)) {
+        // Compute the size of the search area.
+        const {right, left, top, bottom} = bounds;
+        const width = Math.ceil(right - left);
+        const height = Math.ceil(top - bottom);
+        const area = width * height;
+
+        // Choose a sampling resolution based on the size of the search area. We allocate a fixed budget of maxSamples.
+        // For bigger areas, the resolution will be lower (the points are spaced out more), whereas it will be higher
+        // for small ares (the points are closer together).
+        const maxSamples = 48 * 36; // Arbitrary, but based on the stage dimensions of 480 × 360
+        const dynamicSpace = Math.trunc((area / maxSamples) / 2);
+        const actualSpace = Math.max(1, dynamicSpace);
+
+        for (const [x, y] of points(start, bounds, actualSpace)) {
             const point = twgl.v3.create(x, y);
             const currentColor = threadTarget.renderer.constructor.sampleColor3b(point, touchables);
             if (colorMatches(targetColor, currentColor)) {
