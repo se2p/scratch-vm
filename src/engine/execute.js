@@ -944,7 +944,7 @@ const branchDistanceValue = function (blockFunction, argValues, opCached, primit
         // For bigger areas, the resolution will be lower (the points are spaced out more), whereas it will be higher
         // for small ares (the points are closer together).
         const maxSamples = 48 * 36; // Arbitrary, but based on the stage dimensions of 480 × 360
-        const dynamicSpace = Math.trunc((area / maxSamples) / 2);
+        const dynamicSpace = Math.trunc(Math.sqrt(area / maxSamples));
         const actualSpace = Math.max(1, dynamicSpace);
 
         for (const [x, y] of points(start, bounds, actualSpace)) {
