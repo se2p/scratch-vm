@@ -173,8 +173,8 @@ class Tracer {
     reset (targets) {
         this.targets = targets;
         this.traces = {};
-        this.coverage.clear();
-        this.lastStepCoverage.clear();
+        this.coverage = new Set();
+        this.lastStepCoverage = new Set();
     //    for (const prop of Object.getOwnPropertyNames(this.traces)) {
     //        delete this.traces[prop];
     //    }
