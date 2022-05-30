@@ -717,15 +717,14 @@ class Scratch3Text2SpeechBlocks {
     speakAndWait (args, util) {
         const text = Cast.toString(args.WORDS);
 
-        // We encountered an unseen text and therefore send a translation request to the server.
-        if (!this._text2SpeechCache.has(text) && !this._responsePending) {
-            this._responsePending = true;
-            this.convertTextToSoundAndPlay(text, util.target);
-            util.yield();
+        // Since we translate text-to-speech blocks as soon as a block-hosting target has been created,
+        // we should have the corresponding soundPlayer cached. If not something went wrong...
+        if (!this._text2SpeechCache.has(text)){
+            throw new Error(`The text-to-speech cache does not have the requested sound player for the text:  ${text}`);
         }
 
-        // The stackTimer has not been started yet but we have a translated sound fitting the corresponding text.
-        else if (util.stackTimerNeedsInit() && this._text2SpeechCache.has(text)) {
+        // Start the stack timer and the sound file if they have not been started yet.
+        if (util.stackTimerNeedsInit()) {
             this._responsePending = false;
             const soundPlayer = this._text2SpeechCache.get(text);
 
@@ -741,10 +740,7 @@ class Scratch3Text2SpeechBlocks {
             soundPlayer.play();
             util.startStackTimer(duration);
             util.yield();
-        }
-
-        // The Timer has been started and the sound is still running.
-        else if (!util.stackTimerFinished()) {
+        } else if (!util.stackTimerFinished()) {
             util.yield();
         }
     }
