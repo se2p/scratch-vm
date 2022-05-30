@@ -211,11 +211,11 @@ class Scratch3SensingBlocks {
     }
 
     getTimer (args, util) {
-        return util.ioQuery('clock', 'projectTimer');
+        return this.runtime.stepTimer;
     }
 
     resetTimer (args, util) {
-        util.ioQuery('clock', 'resetProjectTimer');
+        this.runtime.stepTimer = 0;
     }
 
     getMouseX (args, util) {

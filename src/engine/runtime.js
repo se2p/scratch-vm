@@ -337,7 +337,13 @@ class Runtime extends EventEmitter {
          */
         this.stepsExecuted = 0;
 
-        // Set an intial value for this.currentMSecs
+        /**
+         * Timer based on the number of executed steps.
+         * @type {number}
+         */
+        this.stepTimer = 0;
+
+        // Set an initial value for this.currentMSecs
         this.updateCurrentMSecs();
 
         /**
@@ -2158,6 +2164,8 @@ class Runtime extends EventEmitter {
             this.profiler.stop();
             this.profiler.reportFrames();
         }
+
+        this.stepTimer += 0.075;
     }
 
     /**
