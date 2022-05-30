@@ -407,10 +407,11 @@ class Scratch3Text2SpeechBlocks {
                 newTarget.setCustomState(Scratch3Text2SpeechBlocks.STATE_KEY, Clone.simple(state));
             }
         } else {
+            // We have created an original target and translate its text-to-speech blocks.
             for (const block of Object.values(newTarget.blocks._blocks)) {
                 if (block.opcode.startsWith('text2speech_')) {
                     const text = Cast.toString(newTarget.blocks._blocks[block.inputs.WORDS.block].fields.TEXT.value);
-                    if (this._text2SpeechCache.has(text)) {
+                    if (!this._text2SpeechCache.has(text)) {
                         await this.convertTextToSoundAndPlay(text, newTarget);
                     }
                 }
