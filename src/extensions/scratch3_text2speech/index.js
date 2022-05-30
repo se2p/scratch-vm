@@ -412,7 +412,9 @@ class Scratch3Text2SpeechBlocks {
                 if (block.opcode === 'text2speech_speakAndWait') {
                     const text = Cast.toString(newTarget.blocks._blocks[block.inputs.WORDS.block].fields.TEXT.value);
                     if (!this._text2SpeechCache.has(text)) {
+                        this.runtime.ongoingTranslation = true;
                         await this.convertTextToSoundAndPlay(text, newTarget);
+                        this.runtime.ongoingTranslation = false;
                     }
                 }
             }
