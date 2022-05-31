@@ -425,6 +425,12 @@ class Runtime extends EventEmitter {
          * @type {number}
          */
         this.accelerationFactor = 1;
+
+        /**
+         * True if text-to-speech blocks are still within the translation process.
+         * @type {boolean}
+         */
+        this.ongoingTranslation = false;
     }
 
     /**

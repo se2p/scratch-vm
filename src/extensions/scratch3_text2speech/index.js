@@ -147,7 +147,7 @@ class Scratch3Text2SpeechBlocks {
          * Caches translated text strings within the SoundPlayer.
          * @type {Map<string, SoundPlayer>}
          */
-        this._text2speechCache = new Map();
+        this._text2SpeechCache = new Map();
     }
 
     /**
@@ -393,17 +393,30 @@ class Scratch3Text2SpeechBlocks {
     }
 
     /**
-     * When a Target is cloned, clone the state.
+     * When a target is generated immediately translate all the text-to-speech texts to assure we do not introduce
+     * network non-determinism. When a Target is cloned, clone the state.
      * @param {Target} newTarget - the newly created target.
      * @param {Target} [sourceTarget] - the target used as a source for the new clone, if any.
      * @listens Runtime#event:targetWasCreated
      * @private
      */
-    _onTargetCreated (newTarget, sourceTarget) {
+    async _onTargetCreated (newTarget, sourceTarget) {
         if (sourceTarget) {
             const state = sourceTarget.getCustomState(Scratch3Text2SpeechBlocks.STATE_KEY);
             if (state) {
                 newTarget.setCustomState(Scratch3Text2SpeechBlocks.STATE_KEY, Clone.simple(state));
+            }
+        } else {
+            // We have created an original target and translate its text-to-speech blocks.
+            for (const block of Object.values(newTarget.blocks._blocks)) {
+                if (block.opcode === 'text2speech_speakAndWait') {
+                    const text = Cast.toString(newTarget.blocks._blocks[block.inputs.WORDS.block].fields.TEXT.value);
+                    if (!this._text2SpeechCache.has(text)) {
+                        this.runtime.ongoingTranslation = true;
+                        await this.convertTextToSoundAndPlay(text, newTarget);
+                        this.runtime.ongoingTranslation = false;
+                    }
+                }
             }
         }
     }
@@ -704,18 +717,18 @@ class Scratch3Text2SpeechBlocks {
      * @param {object} util Utility object provided by the runtime.
      */
     speakAndWait (args, util) {
+        const text = Cast.toString(args.WORDS);
 
-        // We encountered an unseen text and therefore send a translation request to the server.
-        if (!this._text2speechCache.has(args.WORDS) && !this._responsePending) {
-            this._responsePending = true;
-            this.convertTextToSoundAndPlay(args, util);
-            util.yield();
+        // Since we translate text-to-speech blocks as soon as a block-hosting target has been created,
+        // we should have the corresponding soundPlayer cached. If not something went wrong...
+        if (!this._text2SpeechCache.has(text)){
+            throw new Error(`The text-to-speech cache does not have the requested sound player for the text:  ${text}`);
         }
 
-        // The stackTimer has not been started yet but we have a translated sound fitting the corresponding text.
-        else if (util.stackTimerNeedsInit() && this._text2speechCache.has(args.WORDS)) {
+        // Start the stack timer and the sound file if they have not been started yet.
+        if (util.stackTimerNeedsInit()) {
             this._responsePending = false;
-            const soundPlayer = this._text2speechCache.get(args.WORDS);
+            const soundPlayer = this._text2SpeechCache.get(text);
 
             // Increase the volume
             const engine = this.runtime.audioEngine;
@@ -729,10 +742,7 @@ class Scratch3Text2SpeechBlocks {
             soundPlayer.play();
             util.startStackTimer(duration);
             util.yield();
-        }
-
-        // The Timer has been started and the sound is still running.
-        else if (!util.stackTimerFinished()) {
+        } else if (!util.stackTimerFinished()) {
             util.yield();
         }
     }
@@ -740,17 +750,13 @@ class Scratch3Text2SpeechBlocks {
     /**
      * Convert the provided text into a sound file and save it in a cache to avoid having to translate the same text
      * again and again.
-     * @param  {object} args Block arguments.
-     * @param {object} util Utility object provided by the runtime.
+     * @param  {string} text to translate .
+     * @param {Target} target hosting the corresponding text-to-speech block .
      * @return {Promise} A promise that resolves after having translated the given text.
      */
-    convertTextToSoundAndPlay (args, util) {
-        // Cast input to string
-        let words = Cast.toString(args.WORDS);
+    convertTextToSoundAndPlay (text, target) {
         let locale = this._getSpeechSynthLocale();
-
-        const state = this._getState(util.target);
-
+        const state = this._getState(target);
         let gender = this.VOICE_INFO[state.voiceId].gender;
         let playbackRate = this.VOICE_INFO[state.voiceId].playbackRate;
 
@@ -768,7 +774,7 @@ class Scratch3Text2SpeechBlocks {
         }
 
         if (state.voiceId === KITTEN_ID) {
-            words = words.replace(/\S+/g, 'meow');
+            text = text.replace(/\S+/g, 'meow');
             locale = this.LANGUAGE_INFO[this.DEFAULT_LANGUAGE].speechSynthLocale;
         }
 
@@ -776,7 +782,7 @@ class Scratch3Text2SpeechBlocks {
         let path = `${SERVER_HOST}/synth`;
         path += `?locale=${locale}`;
         path += `&gender=${gender}`;
-        path += `&text=${encodeURIComponent(words.substring(0, 128))}`;
+        path += `&text=${encodeURIComponent(text.substring(0, 128))}`;
 
         // Perform HTTP request to get audio file
         return new Promise(resolve => {
@@ -805,7 +811,7 @@ class Scratch3Text2SpeechBlocks {
                         // Cache the translated soundfile within the soundPlayer.
                         soundPlayer.setPlaybackRate(playbackRate);
                         this._soundPlayers.set(soundPlayer.id, soundPlayer);
-                        this._text2speechCache.set(args.WORDS, soundPlayer);
+                        this._text2SpeechCache.set(text, soundPlayer);
                         resolve();
                     });
             });
