@@ -2165,7 +2165,7 @@ class Runtime extends EventEmitter {
             this.profiler.reportFrames();
         }
 
-        this.stepTimer += 0.075;
+        this.stepTimer += 0.075;    // Value experimentally derived; showed the least drift to real-time measurements
     }
 
     /**
