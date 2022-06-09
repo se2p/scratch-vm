@@ -709,8 +709,8 @@ class Scratch3Text2SpeechBlocks {
 
         // Since we check on text-to-speech blocks that need translation before each step, we should not run into this.
         if (!this.text2SpeechCache.has(text)){
-            console.log(`The text-to-speech cache does not have the requested sound player for the text:  ${text}`);
-            return;
+            console.log(`The text-to-speech cache does not have the requested sound player for the text:  ${text}.`);
+            this.convertTextToSoundAndPlay(text, util.target);
         }
 
         // Start the stack timer and the sound file if they have not been started yet.
