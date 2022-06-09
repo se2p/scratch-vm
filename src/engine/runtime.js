@@ -2095,8 +2095,7 @@ class Runtime extends EventEmitter {
      * Repeatedly run `sequencer.stepThreads` and filter out
      * inactive threads after each iteration.
      */
-    async _step () {
-        await this._translateText2Speech();
+    _step () {
         this.traceInfo.tracer.lastStepCoverage.clear();
         if (this.profiler !== null) {
             if (stepProfilerId === -1) {
@@ -2687,7 +2686,7 @@ class Runtime extends EventEmitter {
      * step as it could happen that a variable gets changed to a novel text string which then needs to be translated.
      * @returns {Promise<void>}
      */
-    async _translateText2Speech() {
+    async translateText2Speech() {
         for (const target of this.targets) {
             for (const block of Object.values(target.blocks._blocks)) {
                 if (block.opcode === 'text2speech_speakAndWait') {
