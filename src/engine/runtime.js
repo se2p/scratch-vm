@@ -31,6 +31,7 @@ const Video = require('../io/video');
 
 const StringUtil = require('../util/string-util');
 const uid = require('../util/uid');
+const Cast = require('../util/cast');
 
 const defaultBlockPackages = {
     scratch3_control: require('../blocks/scratch3_control'),
@@ -2094,8 +2095,8 @@ class Runtime extends EventEmitter {
      * Repeatedly run `sequencer.stepThreads` and filter out
      * inactive threads after each iteration.
      */
-    _step () {
-        this.stepsExecuted++;
+    async _step () {
+        await this._translateText2Speech();
         this.traceInfo.tracer.lastStepCoverage.clear();
         if (this.profiler !== null) {
             if (stepProfilerId === -1) {
@@ -2679,6 +2680,62 @@ class Runtime extends EventEmitter {
      */
     updateCurrentMSecs () {
         this.currentMSecs = Date.now();
+    }
+
+    /**
+     * Traverses each target and checks if a text2speech block needs translation. This function is called before every
+     * step as it could happen that a variable gets changed to a novel text string which then needs to be translated.
+     * @returns {Promise<void>}
+     */
+    async _translateText2Speech() {
+        for (const target of this.targets) {
+            for (const block of Object.values(target.blocks._blocks)) {
+                if (block.opcode === 'text2speech_speakAndWait') {
+                    let text = "";  // Filler if something goes wrong.
+                    const textBlockField = target.blocks._blocks[block.inputs.WORDS.block].fields;
+
+                    // Text inside plain text field.
+                    if ("TEXT" in textBlockField) {
+                        text = Cast.toString(textBlockField.TEXT.value);
+                    }
+
+                    // Text inside variable.
+                    else if ("VARIABLE" in textBlockField) {
+                        const variableID = textBlockField.VARIABLE.id;
+                        let variableBlock;
+
+                        // Local variable
+                        if (variableID in target.variables) {
+                            variableBlock = target.variables.variableID;
+                        }
+
+                        // Global variable
+                        else {
+                            const stage = this.getTargetForStage();
+                            if (stage !== undefined && variableID in stage.variables) {
+                                variableBlock = stage.variables[variableID];
+                            }
+                        }
+
+                        // This seems to happen if not all sprites have been fully loaded yet.
+                        if (variableBlock === undefined){
+                            console.log(`Could not find variable with id: ${variableID}`)
+                        }
+                        else {
+                            text = Cast.toString(variableBlock.value);
+                        }
+                    } else {
+                        throw new Error(`Unknown argument for text2speech block: ${block.id}`);
+                    }
+
+                    if (!this.text2Speech.text2SpeechCache.has(text)) {
+                        this.ongoingTranslation = true;
+                        await this.text2Speech.convertTextToSoundAndPlay(text, target);
+                        this.ongoingTranslation = false;
+                    }
+                }
+            }
+        }
     }
 }
 

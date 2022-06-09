@@ -147,7 +147,7 @@ class Scratch3Text2SpeechBlocks {
          * Caches translated text strings within the SoundPlayer.
          * @type {Map<string, SoundPlayer>}
          */
-        this._text2SpeechCache = new Map();
+        this.text2SpeechCache = new Map();
     }
 
     /**
@@ -393,30 +393,17 @@ class Scratch3Text2SpeechBlocks {
     }
 
     /**
-     * When a target is generated immediately translate all the text-to-speech texts to assure we do not introduce
-     * network non-determinism. When a Target is cloned, clone the state.
+     * When a Target is cloned, clone the state.
      * @param {Target} newTarget - the newly created target.
      * @param {Target} [sourceTarget] - the target used as a source for the new clone, if any.
      * @listens Runtime#event:targetWasCreated
      * @private
      */
-    async _onTargetCreated (newTarget, sourceTarget) {
+    _onTargetCreated (newTarget, sourceTarget) {
         if (sourceTarget) {
             const state = sourceTarget.getCustomState(Scratch3Text2SpeechBlocks.STATE_KEY);
             if (state) {
                 newTarget.setCustomState(Scratch3Text2SpeechBlocks.STATE_KEY, Clone.simple(state));
-            }
-        } else {
-            // We have created an original target and translate its text-to-speech blocks.
-            for (const block of Object.values(newTarget.blocks._blocks)) {
-                if (block.opcode === 'text2speech_speakAndWait') {
-                    const text = Cast.toString(newTarget.blocks._blocks[block.inputs.WORDS.block].fields.TEXT.value);
-                    if (!this._text2SpeechCache.has(text)) {
-                        this.runtime.ongoingTranslation = true;
-                        await this.convertTextToSoundAndPlay(text, newTarget);
-                        this.runtime.ongoingTranslation = false;
-                    }
-                }
             }
         }
     }
@@ -719,16 +706,16 @@ class Scratch3Text2SpeechBlocks {
     speakAndWait (args, util) {
         const text = Cast.toString(args.WORDS);
 
-        // Since we translate text-to-speech blocks as soon as a block-hosting target has been created,
-        // we should have the corresponding soundPlayer cached. If not something went wrong...
-        if (!this._text2SpeechCache.has(text)){
-            throw new Error(`The text-to-speech cache does not have the requested sound player for the text:  ${text}`);
+        // Since we check on text-to-speech blocks that need translation before each step, we should not run into this.
+        if (!this.text2SpeechCache.has(text)){
+            console.log(`The text-to-speech cache does not have the requested sound player for the text:  ${text}`);
+            return;
         }
 
         // Start the stack timer and the sound file if they have not been started yet.
         if (util.stackTimerNeedsInit()) {
             this._responsePending = false;
-            const soundPlayer = this._text2SpeechCache.get(text);
+            const soundPlayer = this.text2SpeechCache.get(text);
 
             // Increase the volume
             const engine = this.runtime.audioEngine;
@@ -811,7 +798,7 @@ class Scratch3Text2SpeechBlocks {
                         // Cache the translated soundfile within the soundPlayer.
                         soundPlayer.setPlaybackRate(playbackRate);
                         this._soundPlayers.set(soundPlayer.id, soundPlayer);
-                        this._text2SpeechCache.set(text, soundPlayer);
+                        this.text2SpeechCache.set(text, soundPlayer);
                         resolve();
                     });
             });
