@@ -434,10 +434,10 @@ class Runtime extends EventEmitter {
         this.accelerationFactor = 1;
 
         /**
-         * True if text-to-speech blocks are still within the translation process.
-         * @type {boolean}
+         * Reference to text-to-speech block functionality.
+         * @type {null | Scratch3Text2SpeechBlocks}
          */
-        this.ongoingTranslation = false;
+        this.text2Speech = null;
     }
 
     /**
@@ -2729,9 +2729,7 @@ class Runtime extends EventEmitter {
                     }
 
                     if (!this.text2Speech.text2SpeechCache.has(text)) {
-                        this.ongoingTranslation = true;
                         await this.text2Speech.convertTextToSoundAndPlay(text, target);
-                        this.ongoingTranslation = false;
                     }
                 }
             }

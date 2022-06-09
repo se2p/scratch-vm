@@ -114,6 +114,7 @@ class Scratch3Text2SpeechBlocks {
          * @type {Runtime}
          */
         this.runtime = runtime;
+        this.runtime.text2Speech = this;
 
         /**
          * Map of soundPlayers by sound id.
