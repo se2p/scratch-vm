@@ -139,12 +139,6 @@ class Scratch3Text2SpeechBlocks {
         this._supportedLocales = this._getSupportedLocales();
 
         /**
-         * Flag indicating if we have already sent a request for a text2speech translation to the server.
-         * @type {boolean}
-         */
-        this._responsePending = false;
-
-        /**
          * Caches translated text strings within the SoundPlayer.
          * @type {Map<string, SoundPlayer>}
          */
@@ -709,13 +703,13 @@ class Scratch3Text2SpeechBlocks {
 
         // Since we check on text-to-speech blocks that need translation before each step, we should not run into this.
         if (!this.text2SpeechCache.has(text)){
-            console.log(`The text-to-speech cache does not have the requested sound player for the text:  ${text}.`);
+            console.log(`The text-to-speech cache does not have the requested sound player for the text:  ${text}. Translating now...`);
             this.convertTextToSoundAndPlay(text, util.target);
+            util.yield();
         }
 
         // Start the stack timer and the sound file if they have not been started yet.
-        if (util.stackTimerNeedsInit()) {
-            this._responsePending = false;
+        else if (util.stackTimerNeedsInit() && this.text2SpeechCache.has(args.WORDS)) {
             const soundPlayer = this.text2SpeechCache.get(text);
 
             // Increase the volume
