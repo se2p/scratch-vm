@@ -2096,6 +2096,7 @@ class Runtime extends EventEmitter {
      * inactive threads after each iteration.
      */
     _step () {
+        this.stepsExecuted++;
         this.traceInfo.tracer.lastStepCoverage.clear();
         if (this.profiler !== null) {
             if (stepProfilerId === -1) {
